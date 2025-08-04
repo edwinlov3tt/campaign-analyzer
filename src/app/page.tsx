@@ -1,15 +1,66 @@
-// app/page.tsx - Next.js App Router compatible
+// app/page.tsx - Complete Production-Ready Version
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
-import { Upload, FileText, Loader2, Calendar, Download, BarChart3, TrendingUp, Target, Copy, CheckCircle, Settings, Save, RotateCcw, MapPin, Image, ChevronDown, Info, ArrowLeft } from 'lucide-react';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
+import { Upload, FileText, Loader2, Calendar, BarChart3, TrendingUp, Target, Copy, CheckCircle, Settings, Save, ChevronDown, Info, ArrowLeft } from 'lucide-react';
+
+// TypeScript interfaces
+interface TacticData {
+  fileName: string;
+  tableName: string;
+  tactic: string;
+  headers: string[];
+  rows: Record<string, string | number>[];
+}
+
+interface AnalysisResult {
+  executiveSummary: string;
+  performanceAnalysis: string;
+  trendAnalysis: string;
+  recommendations: string;
+  visualizations: VisualizationData[];
+}
+
+interface VisualizationData {
+  type: 'bar_chart' | 'line_chart' | 'pie_chart' | 'area_chart';
+  title: string;
+  data: {
+    labels: string[];
+    values: number[];
+    colors: string[];
+  };
+}
+
+interface ModifierData {
+  [tactic: string]: {
+    performancePatterns?: {
+      seasonal?: {
+        [quarter: string]: {
+          [key: string]: number;
+        };
+      };
+      monthly?: {
+        [month: string]: {
+          [key: string]: number;
+        };
+      };
+    };
+    geographicBaselines?: {
+      regions?: {
+        [region: string]: {
+          [key: string]: number;
+        };
+      };
+    };
+  };
+}
 
 // Environment variable for API key
 const ANTHROPIC_API_KEY = process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY;
 
 // Tactic to available tables mapping
-const TACTIC_TABLES = {
+const TACTIC_TABLES: Record<string, string[]> = {
   'Targeted Display': [
     'Monthly Performance',
     'Campaign Performance', 
@@ -112,9 +163,73 @@ const TACTIC_TABLES = {
   ]
 };
 
+// Default modifier settings
+const DEFAULT_MODIFIERS: ModifierData = {
+  'Targeted Display': {
+    performancePatterns: {
+      seasonal: {
+        'Q1 (Winter)': { ctr: 0.42, cpm: 7.50, cpc: 1.63 },
+        'Q2 (Spring)': { ctr: 0.55, cpm: 6.23, cpc: 1.27 },
+        'Q3 (Summer)': { ctr: 0.50, cpm: 6.73, cpc: 1.43 },
+        'Q4 (Fall/Holiday)': { ctr: 0.72, cpm: 5.37, cpc: 0.90 }
+      }
+    },
+    geographicBaselines: {
+      regions: {
+        'Northeast': { ctr: 0.58, cpc: 1.35, cvr: 2.8 },
+        'Southeast': { ctr: 0.52, cpc: 1.15, cvr: 3.2 },
+        'Midwest': { ctr: 0.48, cpc: 1.05, cvr: 3.5 },
+        'Southwest': { ctr: 0.55, cpc: 1.25, cvr: 3.0 },
+        'West': { ctr: 0.62, cpc: 1.45, cvr: 2.6 }
+      }
+    }
+  },
+  'TrueView': {
+    performancePatterns: {
+      seasonal: {
+        'Q1 (Winter)': { ctr: 0.68, cpv: 0.16, viewRate: 32.5 },
+        'Q2 (Spring)': { ctr: 0.75, cpv: 0.13, viewRate: 36.4 },
+        'Q3 (Summer)': { ctr: 0.68, cpv: 0.15, viewRate: 32.5 },
+        'Q4 (Fall/Holiday)': { ctr: 0.92, cpv: 0.10, viewRate: 43.8 }
+      }
+    },
+    geographicBaselines: {
+      regions: {
+        'Northeast': { ctr: 0.78, cpv: 0.14, viewRate: 37.2 },
+        'Southeast': { ctr: 0.72, cpv: 0.12, viewRate: 35.8 },
+        'Midwest': { ctr: 0.68, cpv: 0.11, viewRate: 34.5 },
+        'Southwest': { ctr: 0.75, cpv: 0.13, viewRate: 36.1 },
+        'West': { ctr: 0.82, cpv: 0.15, viewRate: 38.9 }
+      }
+    }
+  },
+  'Meta': {
+    performancePatterns: {
+      seasonal: {
+        'Q1 (Winter)': { ctr: 0.92, cpm: 11.50, cpc: 2.08 },
+        'Q2 (Spring)': { ctr: 1.08, cpm: 10.23, cpc: 1.60 },
+        'Q3 (Summer)': { ctr: 0.95, cpm: 11.20, cpc: 1.90 },
+        'Q4 (Fall/Holiday)': { ctr: 1.32, cpm: 9.40, cpc: 1.20 }
+      }
+    },
+    geographicBaselines: {
+      regions: {
+        'Northeast': { ctr: 1.18, cpc: 1.75, cvr: 4.2 },
+        'Southeast': { ctr: 1.05, cpc: 1.55, cvr: 4.8 },
+        'Midwest': { ctr: 0.98, cpc: 1.45, cvr: 5.1 },
+        'Southwest': { ctr: 1.12, cpc: 1.65, cvr: 4.5 },
+        'West': { ctr: 1.25, cpc: 1.85, cvr: 3.9 }
+      }
+    }
+  }
+};
+
 // Error Boundary Component
-class ErrorBoundary extends React.Component {
-  constructor(props: any) {
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
     super(props);
     this.state = { hasError: false, error: null };
   }
@@ -123,12 +238,12 @@ class ErrorBoundary extends React.Component {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: any) {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('Error caught by boundary:', error, errorInfo);
   }
 
   render() {
-    if ((this.state as any).hasError) {
+    if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">
           <div className="bg-white p-6 rounded-lg shadow-sm max-w-md w-full">
@@ -152,14 +267,13 @@ class ErrorBoundary extends React.Component {
 }
 
 const CampaignPerformanceAnalyzer = () => {
-  const [jsonData, setJsonData] = useState(null);
+  const [jsonData, setJsonData] = useState<Record<string, unknown> | null>(null);
   const [companyInfo, setCompanyInfo] = useState('');
-  const [companyFile, setCompanyFile] = useState(null);
-  const [detectedTactics, setDetectedTactics] = useState([]);
-  const [tacticUploads, setTacticUploads] = useState({});
-  const [tacticData, setTacticData] = useState({});
+  const [detectedTactics, setDetectedTactics] = useState<string[]>([]);
+  const [tacticUploads, setTacticUploads] = useState<Record<string, File>>({});
+  const [tacticData, setTacticData] = useState<Record<string, TacticData>>({});
   const [timeRange, setTimeRange] = useState('30');
-  const [analysisResult, setAnalysisResult] = useState(null);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState('');
   const [error, setError] = useState('');
@@ -167,10 +281,9 @@ const CampaignPerformanceAnalyzer = () => {
   const [showInstructions, setShowInstructions] = useState(true);
   const [sectionsCollapsed, setSectionsCollapsed] = useState(false);
   const [showReanalyzeModal, setShowReanalyzeModal] = useState(false);
-  const [newFilesUploaded, setNewFilesUploaded] = useState([]);
-  const [lastAnalysisFileCount, setLastAnalysisFileCount] = useState(0);
+  const [newFilesUploaded, setNewFilesUploaded] = useState<string[]>([]);
   const [currentView, setCurrentView] = useState('analyzer');
-  const [modifierSettings, setModifierSettings] = useState(null);
+  const [modifierSettings, setModifierSettings] = useState<ModifierData | null>(null);
 
   // Check for API key on mount
   useEffect(() => {
@@ -210,7 +323,7 @@ const CampaignPerformanceAnalyzer = () => {
         return value;
       });
       
-      const row: any = {};
+      const row: Record<string, string | number> = {};
       headers.forEach((header, index) => {
         row[header] = values[index] || '';
       });
@@ -220,31 +333,35 @@ const CampaignPerformanceAnalyzer = () => {
     return { headers, rows };
   };
 
-  const extractTacticsFromJSON = (data: any) => {
-    const tactics = new Set();
+  const extractTacticsFromJSON = (data: Record<string, unknown>) => {
+    const tactics = new Set<string>();
     
-    if (data.lineItems) {
-      data.lineItems.forEach((item: any) => {
+    if (data.lineItems && Array.isArray(data.lineItems)) {
+      data.lineItems.forEach((item: Record<string, unknown>) => {
         // Add products
-        if (item.product) {
+        if (item.product && typeof item.product === 'string') {
           tactics.add(item.product);
         }
         
         // Add sub-products
         if (item.subProduct) {
           const subProducts = Array.isArray(item.subProduct) ? item.subProduct : [item.subProduct];
-          subProducts.forEach(sub => tactics.add(sub));
+          subProducts.forEach(sub => {
+            if (typeof sub === 'string') tactics.add(sub);
+          });
         }
         
         // Add tactic types
         if (item.tacticTypeSpecial) {
           const tacticTypes = Array.isArray(item.tacticTypeSpecial) ? item.tacticTypeSpecial : [item.tacticTypeSpecial];
-          tacticTypes.forEach(tactic => tactics.add(tactic));
+          tacticTypes.forEach(tactic => {
+            if (typeof tactic === 'string') tactics.add(tactic);
+          });
         }
       });
     }
     
-    return Array.from(tactics).filter(tactic => TACTIC_TABLES[tactic as keyof typeof TACTIC_TABLES]);
+    return Array.from(tactics).filter(tactic => TACTIC_TABLES[tactic]);
   };
 
   const handleJsonUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -266,8 +383,8 @@ const CampaignPerformanceAnalyzer = () => {
       setDetectedTactics(tactics);
       
       setError('');
-    } catch (err: any) {
-      setError('Error parsing JSON file: ' + err.message);
+    } catch (err: unknown) {
+      setError('Error parsing JSON file: ' + (err instanceof Error ? err.message : String(err)));
     }
   };
 
@@ -286,10 +403,9 @@ const CampaignPerformanceAnalyzer = () => {
       // Remove Generation Costs section if present
       const cleanedText = text.replace(/Generation Costs:[\s\S]*$/i, '').trim();
       setCompanyInfo(cleanedText);
-      setCompanyFile(file);
       setError('');
-    } catch (err: any) {
-      setError('Error reading company file: ' + err.message);
+    } catch (err: unknown) {
+      setError('Error reading company file: ' + (err instanceof Error ? err.message : String(err)));
     }
   };
 
@@ -335,15 +451,14 @@ const CampaignPerformanceAnalyzer = () => {
       }));
       
       setError('');
-    } catch (err: any) {
-      setError('Error parsing table file: ' + err.message);
+    } catch (err: unknown) {
+      setError('Error parsing table file: ' + (err instanceof Error ? err.message : String(err)));
     }
   };
 
   const clearAndReset = () => {
     setJsonData(null);
     setCompanyInfo('');
-    setCompanyFile(null);
     setDetectedTactics([]);
     setTacticUploads({});
     setTacticData({});
@@ -354,7 +469,6 @@ const CampaignPerformanceAnalyzer = () => {
     setShowInstructions(true);
     setSectionsCollapsed(false);
     setNewFilesUploaded([]);
-    setLastAnalysisFileCount(0);
   };
 
   const handleReanalyzeClick = () => {
@@ -423,8 +537,6 @@ ${analysisResult.recommendations}
     setError('');
 
     try {
-      const currentFileCount = Object.keys(tacticData).length;
-      setLastAnalysisFileCount(currentFileCount);
 
       // Build modifier context for AI prompt
       let modifierContext = '';
@@ -547,8 +659,8 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
       const result = JSON.parse(responseText);
       
       setAnalysisResult(result);
-    } catch (err: any) {
-      setError('Error generating analysis: ' + err.message);
+    } catch (err: unknown) {
+      setError('Error generating analysis: ' + (err instanceof Error ? err.message : String(err)));
       console.error('Analysis error:', err);
     } finally {
       setIsLoading(false);
@@ -556,7 +668,7 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
     }
   };
 
-  const renderVisualization = (viz: any, index: number) => {
+  const renderVisualization = (viz: VisualizationData, index: number) => {
     const { type, title, data } = viz;
     const colors = data.colors || ['#cf0e0f', '#ff4444', '#ff6666', '#ff8888', '#ffaaaa'];
 
@@ -628,7 +740,7 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
                   dataKey="value"
                   label
                 >
-                  {chartData.map((entry: any, idx: number) => (
+                  {chartData.map((_entry: { name: string; value: number }, idx: number) => (
                     <Cell key={`cell-${idx}`} fill={colors[idx % colors.length]} />
                   ))}
                 </Pie>
@@ -644,7 +756,7 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
   };
 
   const getUploadedTablesCount = (tactic: string) => {
-    const tacticTables = TACTIC_TABLES[tactic as keyof typeof TACTIC_TABLES] || [];
+    const tacticTables = TACTIC_TABLES[tactic] || [];
     return tacticTables.filter(table => tacticUploads[`${tactic}_${table}`]).length;
   };
 
@@ -653,7 +765,7 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
       detectedTactics={detectedTactics} 
       modifierSettings={modifierSettings}
       onBack={() => setCurrentView('analyzer')}
-      onSave={(modifiers) => {
+      onSave={(modifiers: ModifierData) => {
         if (typeof window !== 'undefined') {
           localStorage.setItem('campaignModifiers', JSON.stringify(modifiers));
         }
@@ -712,7 +824,6 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
           </div>
         )}
 
-        {/* Rest of the component stays the same... */}
         {/* Instructions */}
         {showInstructions && (
           <div className="mb-6 p-6 bg-white rounded-lg shadow-sm border-l-4 relative" style={{borderLeftColor: '#cf0e0f'}}>
@@ -734,36 +845,341 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
           </div>
         )}
 
-        {/* All other components remain the same... */}
-        {/* For brevity, I'm not repeating the entire component, but the rest stays identical */}
+        {/* Reanalyze Modal */}
+        {showReanalyzeModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold mb-4" style={{color: '#cf0e0f'}}>
+                Confirm Re-analysis
+              </h3>
+              <p className="text-gray-700 mb-4">
+                This will replace your current analysis results. Make sure to save your current analysis if needed.
+              </p>
+              
+              {newFilesUploaded.length > 0 ? (
+                <div className="mb-4">
+                  <p className="text-sm font-medium text-gray-700 mb-2">New files uploaded since last analysis:</p>
+                  <ul className="text-sm text-gray-600 bg-gray-50 p-3 rounded max-h-32 overflow-y-auto">
+                    {newFilesUploaded.map((file, index) => (
+                      <li key={index}>• {file}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                  <p className="text-sm text-yellow-700">
+                    ⚠️ No new files have been uploaded since the last analysis.
+                  </p>
+                </div>
+              )}
+              
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowReanalyzeModal(false)}
+                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Go Back
+                </button>
+                <button
+                  onClick={proceedWithReanalysis}
+                  className="px-4 py-2 text-white rounded-lg hover:bg-red-700"
+                  style={{backgroundColor: '#cf0e0f'}}
+                >
+                  Proceed with Re-analysis
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Control Buttons */}
+        <div className="mb-6 flex justify-between items-center">
+          <button
+            onClick={clearAndReset}
+            className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center"
+          >
+            <span className="mr-2">🔄</span>
+            Clear & Reset
+          </button>
+          
+          {sectionsCollapsed && (
+            <button
+              onClick={() => setSectionsCollapsed(false)}
+              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              ↕️ Expand Upload Sections
+            </button>
+          )}
+        </div>
+
+        {/* Campaign JSON Upload */}
+        {!sectionsCollapsed && (
+          <div className="mb-6 bg-white p-6 rounded-lg shadow-sm">
+            <h2 className="text-xl font-semibold mb-4" style={{color: '#cf0e0f'}}>
+              <Upload className="inline-block mr-2" />
+              Campaign Data (JSON)
+            </h2>
+            <label className="flex items-center justify-center w-full h-32 px-4 transition bg-white border-2 border-gray-300 border-dashed rounded-lg appearance-none cursor-pointer hover:border-red-400 focus:outline-none">
+              <div className="flex flex-col items-center space-y-2">
+                <Upload className="w-8 h-8 text-gray-400" />
+                <span className="text-gray-600">Drop JSON file here or click to upload</span>
+              </div>
+              <input
+                type="file"
+                className="hidden"
+                accept=".json"
+                onChange={handleJsonUpload}
+              />
+            </label>
+            {jsonData && (
+              <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded">
+                <p className="text-green-700">✓ Campaign data loaded successfully</p>
+                <p className="text-sm text-gray-600 mt-1">
+                  Found {(jsonData?.lineItems as unknown[])?.length || 0} line items | Detected {detectedTactics.length} tactics
+                </p>
+                {detectedTactics.length > 0 && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    Tactics: {detectedTactics.join(', ')}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Company Information */}
+        {!sectionsCollapsed && (
+          <div className="mb-6 bg-white p-6 rounded-lg shadow-sm">
+            <h2 className="text-xl font-semibold mb-4" style={{color: '#cf0e0f'}}>
+              <FileText className="inline-block mr-2" />
+              Company Information
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Upload Text File</label>
+                <input
+                  type="file"
+                  accept=".txt"
+                  onChange={handleCompanyFileUpload}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+                />
+              </div>
+              <div className="md:col-span-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Or Paste Information</label>
+                <textarea
+                  value={companyInfo}
+                  onChange={(e) => setCompanyInfo(e.target.value)}
+                  placeholder="Paste company information here..."
+                  className="w-full h-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tactic-Specific Performance Tables */}
+        {detectedTactics.length > 0 && !sectionsCollapsed && (
+          <div className="mb-6 bg-white p-6 rounded-lg shadow-sm">
+            <h2 className="text-xl font-semibold mb-4" style={{color: '#cf0e0f'}}>
+              <TrendingUp className="inline-block mr-2" />
+              Performance Tables by Tactic
+            </h2>
+            <p className="text-gray-600 mb-4">
+              Upload relevant performance tables for each tactic. Not all tables are required - focus on the ones most important for your analysis.
+            </p>
+            
+            {detectedTactics.map((tactic) => (
+              <div key={tactic} className="mb-8 border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold" style={{color: '#cf0e0f'}}>{tactic}</h3>
+                  <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-sm">
+                    {getUploadedTablesCount(tactic)} / {TACTIC_TABLES[tactic]?.length || 0} tables uploaded
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {(TACTIC_TABLES[tactic] || []).map((tableName) => {
+                    const uploadKey = `${tactic}_${tableName}`;
+                    const isUploaded = tacticUploads[uploadKey];
+                    
+                    return (
+                      <div key={tableName} className="border border-gray-200 rounded p-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          {tableName}
+                        </label>
+                        <input
+                          type="file"
+                          accept=".csv"
+                          onChange={(e) => handleTacticTableUpload(e, tactic, tableName)}
+                          className="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+                        />
+                        {isUploaded && (
+                          <div className="mt-1 flex items-center">
+                            <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
+                            <span className="text-xs text-green-600">Uploaded</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Time Range Selection */}
+        {jsonData && !sectionsCollapsed && (
+          <div className="mb-6 bg-white p-6 rounded-lg shadow-sm">
+            <h2 className="text-xl font-semibold mb-4" style={{color: '#cf0e0f'}}>
+              <Calendar className="inline-block mr-2" />
+              Analysis Time Range
+            </h2>
+            <select
+              value={timeRange}
+              onChange={(e) => setTimeRange(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+            >
+              <option value="7">Last 7 days</option>
+              <option value="14">Last 14 days</option>
+              <option value="30">Last 30 days</option>
+              <option value="60">Last 60 days</option>
+              <option value="90">Last 90 days</option>
+            </select>
+          </div>
+        )}
+
+        {/* Generate Analysis Button */}
+        {jsonData && companyInfo && (
+          <div className="mb-8 text-center">
+            <button
+              onClick={handleReanalyzeClick}
+              disabled={isLoading || !ANTHROPIC_API_KEY}
+              className="px-8 py-3 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-lg font-semibold"
+              style={{backgroundColor: '#cf0e0f'}}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="inline-block mr-2 animate-spin" />
+                  Generating Analysis...
+                </>
+              ) : analysisResult ? (
+                <>
+                  <Target className="inline-block mr-2" />
+                  Re-analyze Performance Data
+                </>
+              ) : (
+                <>
+                  <Target className="inline-block mr-2" />
+                  Generate Detailed Performance Analysis
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="w-10 h-10 animate-spin" style={{color: '#cf0e0f'}} />
+            <p className="mt-3 text-gray-600">{loadingStatus}</p>
+          </div>
+        )}
+
+        {/* Error Display */}
+        {error && (
+          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            {error}
+          </div>
+        )}
+
+        {/* Analysis Results */}
+        {!isLoading && analysisResult && (
+          <div className="space-y-8">
+            {/* Copy Button */}
+            <div className="flex justify-end">
+              <button
+                onClick={copyAnalysisToClipboard}
+                className="flex items-center px-4 py-2 text-white rounded-lg hover:bg-red-700 transition-colors"
+                style={{backgroundColor: '#cf0e0f'}}
+              >
+                {copySuccess ? (
+                  <>
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy Analysis
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Executive Summary */}
+            <div className="bg-white p-6 rounded-lg shadow-sm">
+              <h2 className="text-2xl font-bold mb-4" style={{color: '#cf0e0f'}}>Executive Summary</h2>
+              <div className="prose max-w-none">
+                <p className="text-gray-700 leading-relaxed whitespace-pre-line">{analysisResult.executiveSummary}</p>
+              </div>
+            </div>
+
+            {/* Performance Analysis */}
+            <div className="bg-white p-6 rounded-lg shadow-sm">
+              <h2 className="text-2xl font-bold mb-4" style={{color: '#cf0e0f'}}>Performance Analysis by Tactic</h2>
+              <div className="prose max-w-none">
+                <p className="text-gray-700 leading-relaxed whitespace-pre-line">{analysisResult.performanceAnalysis}</p>
+              </div>
+            </div>
+
+            {/* Trend Analysis */}
+            <div className="bg-white p-6 rounded-lg shadow-sm">
+              <h2 className="text-2xl font-bold mb-4" style={{color: '#cf0e0f'}}>Trend Analysis</h2>
+              <div className="prose max-w-none">
+                <p className="text-gray-700 leading-relaxed whitespace-pre-line">{analysisResult.trendAnalysis}</p>
+              </div>
+            </div>
+
+            {/* Visualizations */}
+            {analysisResult.visualizations && analysisResult.visualizations.length > 0 && (
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <h2 className="text-2xl font-bold mb-6" style={{color: '#cf0e0f'}}>Performance Insights & Data Visualizations</h2>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {analysisResult.visualizations.map((viz, index) => renderVisualization(viz, index))}
+                </div>
+              </div>
+            )}
+
+            {/* Recommendations */}
+            <div className="bg-white p-6 rounded-lg shadow-sm">
+              <h2 className="text-2xl font-bold mb-4" style={{color: '#cf0e0f'}}>Strategic Optimization Recommendations</h2>
+              <div className="prose max-w-none">
+                <p className="text-gray-700 leading-relaxed whitespace-pre-line">{analysisResult.recommendations}</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-// Separate Modifier Settings Component
-const ModifierSettingsPage = ({ detectedTactics, modifierSettings, onBack, onSave }: any) => {
-  const [modifiers, setModifiers] = useState(modifierSettings || {
-    'Targeted Display': {
-      performancePatterns: {
-        seasonal: {
-          'Q1 (Winter)': { ctr: 0.42, cpm: 7.50, cpc: 1.63 },
-          'Q2 (Spring)': { ctr: 0.55, cpm: 6.23, cpc: 1.27 },
-          'Q3 (Summer)': { ctr: 0.50, cpm: 6.73, cpc: 1.43 },
-          'Q4 (Fall/Holiday)': { ctr: 0.72, cpm: 5.37, cpc: 0.90 }
-        }
-      },
-      geographicBaselines: {
-        regions: {
-          'Northeast': { ctr: 0.58, cpc: 1.35, cvr: 2.8 },
-          'Southeast': { ctr: 0.52, cpc: 1.15, cvr: 3.2 },
-          'Midwest': { ctr: 0.48, cpc: 1.05, cvr: 3.5 },
-          'Southwest': { ctr: 0.55, cpc: 1.25, cvr: 3.0 },
-          'West': { ctr: 0.62, cpc: 1.45, cvr: 2.6 }
-        }
-      }
-    }
-  });
+// Complete Modifier Settings Component
+interface ModifierSettingsPageProps {
+  detectedTactics: string[];
+  modifierSettings: ModifierData | null;
+  onBack: () => void;
+  onSave: (modifiers: ModifierData) => void;
+}
+
+const ModifierSettingsPage: React.FC<ModifierSettingsPageProps> = ({ 
+  detectedTactics, 
+  modifierSettings, 
+  onBack, 
+  onSave 
+}) => {
+  const [modifiers, setModifiers] = useState<ModifierData>(modifierSettings || DEFAULT_MODIFIERS);
   const [selectedTactic, setSelectedTactic] = useState(detectedTactics[0] || 'Targeted Display');
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -773,16 +1189,19 @@ const ModifierSettingsPage = ({ detectedTactics, modifierSettings, onBack, onSav
   };
 
   const handleModifierChange = (section: string, subSection: string, key: string, metric: string, value: string) => {
-    setModifiers((prev: any) => ({
+    setModifiers(prev => ({
       ...prev,
       [selectedTactic]: {
         ...prev[selectedTactic],
         [section]: {
-          ...prev[selectedTactic]?.[section],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ...(prev[selectedTactic] as any)?.[section],
           [subSection]: {
-            ...prev[selectedTactic]?.[section]?.[subSection],
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ...(prev[selectedTactic] as any)?.[section]?.[subSection],
             [key]: {
-              ...prev[selectedTactic]?.[section]?.[subSection]?.[key],
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              ...(prev[selectedTactic] as any)?.[section]?.[subSection]?.[key],
               [metric]: parseFloat(value) || 0
             }
           }
@@ -811,8 +1230,168 @@ const ModifierSettingsPage = ({ detectedTactics, modifierSettings, onBack, onSav
           </button>
         </div>
 
-        {/* Modifier settings content... */}
-        {/* Rest of the modifier component stays the same */}
+        {/* Info Box */}
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-start">
+            <Info className="w-5 h-5 text-blue-600 mr-3 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-medium text-blue-900 mb-1">About Modifier Settings</h3>
+              <p className="text-sm text-blue-700">
+                These benchmarks will be automatically injected into your AI analysis reports to provide contextual insights. 
+                Adjust the values based on your industry knowledge and historical performance data.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Tactic Selector */}
+        <div className="mb-6 bg-white p-4 rounded-lg shadow-sm">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Select Tactic to Configure</label>
+          <div className="relative">
+            <select
+              value={selectedTactic}
+              onChange={(e) => setSelectedTactic(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 appearance-none"
+            >
+              {detectedTactics.map(tactic => (
+                <option key={tactic} value={tactic}>{tactic}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-gray-400 pointer-events-none" />
+          </div>
+        </div>
+
+        {/* Benchmarks Tables */}
+        <div className="bg-white p-6 rounded-lg shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold" style={{color: '#cf0e0f'}}>Performance Benchmarks</h3>
+            <button
+              onClick={handleSave}
+              disabled={!hasChanges}
+              className="px-4 py-2 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center"
+              style={{backgroundColor: hasChanges ? '#cf0e0f' : undefined}}
+            >
+              <Save className="w-4 h-4 mr-2" />
+              Save & Return
+            </button>
+          </div>
+
+          {/* Seasonal Performance */}
+          {modifiers[selectedTactic]?.performancePatterns?.seasonal && (
+            <div className="mb-6">
+              <h4 className="text-md font-medium mb-3" style={{color: '#cf0e0f'}}>Seasonal Performance</h4>
+              <div className="overflow-x-auto">
+                <table className="min-w-full border border-gray-200 rounded-lg">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quarter</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        {selectedTactic === 'TrueView' ? 'CTR (%)' : 'CTR (%)'}
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        {selectedTactic === 'TrueView' ? 'CPV ($)' : 'CPM ($)'}
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        {selectedTactic === 'TrueView' ? 'View Rate (%)' : 'CPC ($)'}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {Object.entries(modifiers[selectedTactic]?.performancePatterns?.seasonal || {}).map(([quarter, data]) => (
+                      <tr key={quarter}>
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{quarter}</td>
+                        <td className="px-4 py-3">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={data.ctr || 0}
+                            onChange={(e) => handleModifierChange('performancePatterns', 'seasonal', quarter, 'ctr', e.target.value)}
+                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={selectedTactic === 'TrueView' ? (data.cpv || 0) : (data.cpm || 0)}
+                            onChange={(e) => handleModifierChange('performancePatterns', 'seasonal', quarter, selectedTactic === 'TrueView' ? 'cpv' : 'cpm', e.target.value)}
+                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={selectedTactic === 'TrueView' ? (data.viewRate || 0) : (data.cpc || 0)}
+                            onChange={(e) => handleModifierChange('performancePatterns', 'seasonal', quarter, selectedTactic === 'TrueView' ? 'viewRate' : 'cpc', e.target.value)}
+                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Geographic Baselines */}
+          {modifiers[selectedTactic]?.geographicBaselines?.regions && (
+            <div>
+              <h4 className="text-md font-medium mb-3" style={{color: '#cf0e0f'}}>Geographic Baselines</h4>
+              <div className="overflow-x-auto">
+                <table className="min-w-full border border-gray-200 rounded-lg">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Region</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CTR (%)</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        {selectedTactic === 'TrueView' ? 'CPV ($)' : 'CPC ($)'}
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        {selectedTactic === 'TrueView' ? 'View Rate (%)' : 'CVR (%)'}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {Object.entries(modifiers[selectedTactic]?.geographicBaselines?.regions || {}).map(([region, data]) => (
+                      <tr key={region}>
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{region}</td>
+                        <td className="px-4 py-3">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={data.ctr || 0}
+                            onChange={(e) => handleModifierChange('geographicBaselines', 'regions', region, 'ctr', e.target.value)}
+                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={selectedTactic === 'TrueView' ? (data.cpv || 0) : (data.cpc || 0)}
+                            onChange={(e) => handleModifierChange('geographicBaselines', 'regions', region, selectedTactic === 'TrueView' ? 'cpv' : 'cpc', e.target.value)}
+                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={selectedTactic === 'TrueView' ? (data.viewRate || 0) : (data.cvr || 0)}
+                            onChange={(e) => handleModifierChange('geographicBaselines', 'regions', region, selectedTactic === 'TrueView' ? 'viewRate' : 'cvr', e.target.value)}
+                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -834,4 +1413,19 @@ Create a .env.local file in your project root:
 NEXT_PUBLIC_ANTHROPIC_API_KEY=your_anthropic_api_key_here
 
 For deployment, add this environment variable to your Vercel dashboard.
+
+PACKAGE.JSON DEPENDENCIES:
+{
+  "dependencies": {
+    "react": "^18",
+    "react-dom": "^18", 
+    "next": "^14",
+    "recharts": "^2.8.0",
+    "lucide-react": "^0.294.0",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "typescript": "^5"
+  }
+}
 */
