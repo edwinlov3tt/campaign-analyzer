@@ -583,7 +583,22 @@ When analyzing performance data, compare against these benchmarks rather than ge
 Highlight when performance is above or below these customized benchmarks and provide insights based on these specific thresholds.`;
       }
 
+      const currentDate = new Date();
+      const dateContext = `
+CURRENT DATE & TIME CONTEXT:
+Today is ${currentDate.toLocaleDateString('en-US', { 
+  weekday: 'long', 
+  year: 'numeric', 
+  month: 'long', 
+  day: 'numeric' 
+})} at ${currentDate.toLocaleTimeString('en-US')} (${currentDate.getFullYear()}).
+Current month: ${currentDate.toLocaleDateString('en-US', { month: 'long' })} ${currentDate.getFullYear()}
+Current quarter: Q${Math.floor((currentDate.getMonth() + 3) / 3)} ${currentDate.getFullYear()}
+
+Use this context when analyzing performance trends and seasonal patterns. If you notice performance changes in recent months, consider whether we are currently in that time period when making recommendations.`;
+
       const prompt = `As a digital marketing analyst, analyze this campaign performance data and provide a comprehensive report.
+${dateContext}
 
 COMPANY INFORMATION:
 ${companyInfo}
@@ -1260,14 +1275,14 @@ const ModifierSettingsPage: React.FC<ModifierSettingsPageProps> = ({
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold" style={{color: '#cf0e0f'}}>
+          <h1 className="text-3xl font-bold text-gray-900" style={{color: '#cf0e0f'}}>
             <Settings className="inline-block mr-3" />
             Campaign Modifier Settings
           </h1>
           
           <button
             onClick={onBack}
-            className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center"
+            className="px-4 py-2 text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 flex items-center transition-colors font-medium"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Analyzer
@@ -1308,11 +1323,11 @@ const ModifierSettingsPage: React.FC<ModifierSettingsPageProps> = ({
         {/* Benchmarks Tables */}
         <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold" style={{color: '#cf0e0f'}}>Performance Benchmarks</h3>
+            <h3 className="text-lg font-semibold text-gray-900" style={{color: '#cf0e0f'}}>Performance Benchmarks</h3>
             <button
               onClick={handleSave}
               disabled={!hasChanges}
-              className="px-4 py-2 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center"
+              className="px-4 py-2 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center transition-colors font-medium"
               style={{backgroundColor: hasChanges ? '#cf0e0f' : undefined}}
             >
               <Save className="w-4 h-4 mr-2" />
@@ -1323,19 +1338,19 @@ const ModifierSettingsPage: React.FC<ModifierSettingsPageProps> = ({
           {/* Seasonal Performance */}
           {modifiers[selectedTactic]?.performancePatterns?.seasonal && (
             <div className="mb-6">
-              <h4 className="text-md font-medium mb-3" style={{color: '#cf0e0f'}}>Seasonal Performance</h4>
+              <h4 className="text-md font-medium mb-3 text-gray-900" style={{color: '#cf0e0f'}}>Seasonal Performance</h4>
               <div className="overflow-x-auto">
                 <table className="min-w-full border border-gray-200 rounded-lg">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quarter</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">Quarter</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                         {selectedTactic === 'TrueView' ? 'CTR (%)' : 'CTR (%)'}
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                         {selectedTactic === 'TrueView' ? 'CPV ($)' : 'CPM ($)'}
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                         {selectedTactic === 'TrueView' ? 'View Rate (%)' : 'CPC ($)'}
                       </th>
                     </tr>
@@ -1350,7 +1365,7 @@ const ModifierSettingsPage: React.FC<ModifierSettingsPageProps> = ({
                             step="0.01"
                             value={data.ctr || 0}
                             onChange={(e) => handleModifierChange('performancePatterns', 'seasonal', quarter, 'ctr', e.target.value)}
-                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900 bg-white"
                           />
                         </td>
                         <td className="px-4 py-3">
@@ -1359,7 +1374,7 @@ const ModifierSettingsPage: React.FC<ModifierSettingsPageProps> = ({
                             step="0.01"
                             value={selectedTactic === 'TrueView' ? (data.cpv || 0) : (data.cpm || 0)}
                             onChange={(e) => handleModifierChange('performancePatterns', 'seasonal', quarter, selectedTactic === 'TrueView' ? 'cpv' : 'cpm', e.target.value)}
-                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900 bg-white"
                           />
                         </td>
                         <td className="px-4 py-3">
@@ -1368,7 +1383,7 @@ const ModifierSettingsPage: React.FC<ModifierSettingsPageProps> = ({
                             step="0.01"
                             value={selectedTactic === 'TrueView' ? (data.viewRate || 0) : (data.cpc || 0)}
                             onChange={(e) => handleModifierChange('performancePatterns', 'seasonal', quarter, selectedTactic === 'TrueView' ? 'viewRate' : 'cpc', e.target.value)}
-                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900 bg-white"
                           />
                         </td>
                       </tr>
@@ -1382,17 +1397,17 @@ const ModifierSettingsPage: React.FC<ModifierSettingsPageProps> = ({
           {/* Geographic Baselines */}
           {modifiers[selectedTactic]?.geographicBaselines?.regions && (
             <div>
-              <h4 className="text-md font-medium mb-3" style={{color: '#cf0e0f'}}>Geographic Baselines</h4>
+              <h4 className="text-md font-medium mb-3 text-gray-900" style={{color: '#cf0e0f'}}>Geographic Baselines</h4>
               <div className="overflow-x-auto">
                 <table className="min-w-full border border-gray-200 rounded-lg">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Region</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CTR (%)</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">Region</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">CTR (%)</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                         {selectedTactic === 'TrueView' ? 'CPV ($)' : 'CPC ($)'}
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                         {selectedTactic === 'TrueView' ? 'View Rate (%)' : 'CVR (%)'}
                       </th>
                     </tr>
@@ -1407,7 +1422,7 @@ const ModifierSettingsPage: React.FC<ModifierSettingsPageProps> = ({
                             step="0.01"
                             value={data.ctr || 0}
                             onChange={(e) => handleModifierChange('geographicBaselines', 'regions', region, 'ctr', e.target.value)}
-                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900 bg-white"
                           />
                         </td>
                         <td className="px-4 py-3">
@@ -1416,7 +1431,7 @@ const ModifierSettingsPage: React.FC<ModifierSettingsPageProps> = ({
                             step="0.01"
                             value={selectedTactic === 'TrueView' ? (data.cpv || 0) : (data.cpc || 0)}
                             onChange={(e) => handleModifierChange('geographicBaselines', 'regions', region, selectedTactic === 'TrueView' ? 'cpv' : 'cpc', e.target.value)}
-                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900 bg-white"
                           />
                         </td>
                         <td className="px-4 py-3">
@@ -1425,7 +1440,7 @@ const ModifierSettingsPage: React.FC<ModifierSettingsPageProps> = ({
                             step="0.01"
                             value={selectedTactic === 'TrueView' ? (data.viewRate || 0) : (data.cvr || 0)}
                             onChange={(e) => handleModifierChange('geographicBaselines', 'regions', region, selectedTactic === 'TrueView' ? 'viewRate' : 'cvr', e.target.value)}
-                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900 bg-white"
                           />
                         </td>
                       </tr>

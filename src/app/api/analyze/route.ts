@@ -5,9 +5,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { prompt } = body;
 
-    const ANTHROPIC_API_KEY = process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY;
+    // Try both environment variable names
+    const ANTHROPIC_API_KEY = process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
+    
+    console.log('API key check:', {
+      hasPublicKey: !!process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY,
+      hasPrivateKey: !!process.env.ANTHROPIC_API_KEY,
+      finalKey: !!ANTHROPIC_API_KEY
+    });
     
     if (!ANTHROPIC_API_KEY) {
+      console.error('Missing API key in environment variables');
       return NextResponse.json(
         { error: 'Anthropic API key not configured' },
         { status: 500 }
@@ -47,7 +55,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Analysis API error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: `Internal server error: ${error instanceof Error ? error.message : String(error)}` },
       { status: 500 }
     );
   }
