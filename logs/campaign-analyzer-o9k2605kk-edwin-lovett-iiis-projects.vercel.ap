@@ -1,0 +1,12 @@
+campaign-analyzer-o9k2605kk-edwin-lovett-iiis-projects.vercel.app/:1 Access to fetch at 'https://api.anthropic.com/v1/messages' from origin 'https://campaign-analyzer-o9k2605kk-edwin-lovett-iiis-projects.vercel.app' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+api.anthropic.com/v1/messages:1  Failed to load resource: net::ERR_FAILED
+page-7211d27931d88002.js:1 Analysis error: TypeError: Failed to fetch
+    at eu (page-7211d27931d88002.js:1:12008)
+    at onClick (page-7211d27931d88002.js:1:22553)
+    at i4 (4bd1b696-cf72ae8a39fa05aa.js:1:135071)
+    at 4bd1b696-cf72ae8a39fa05aa.js:1:141157
+    at nz (4bd1b696-cf72ae8a39fa05aa.js:1:19197)
+    at se (4bd1b696-cf72ae8a39fa05aa.js:1:136304)
+    at cs (4bd1b696-cf72ae8a39fa05aa.js:1:163306)
+    at cu (4bd1b696-cf72ae8a39fa05aa.js:1:163128)
+eu @ page-7211d27931d88002.js:1

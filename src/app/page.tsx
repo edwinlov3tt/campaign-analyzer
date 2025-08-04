@@ -269,6 +269,8 @@ class ErrorBoundary extends React.Component<
 const CampaignPerformanceAnalyzer = () => {
   const [jsonData, setJsonData] = useState<Record<string, unknown> | null>(null);
   const [companyInfo, setCompanyInfo] = useState('');
+  const [luminaLink, setLuminaLink] = useState('');
+  const [isLoadingCampaign, setIsLoadingCampaign] = useState(false);
   const [detectedTactics, setDetectedTactics] = useState<string[]>([]);
   const [tacticUploads, setTacticUploads] = useState<Record<string, File>>({});
   const [tacticData, setTacticData] = useState<Record<string, TacticData>>({});
@@ -364,19 +366,46 @@ const CampaignPerformanceAnalyzer = () => {
     return Array.from(tactics).filter(tactic => TACTIC_TABLES[tactic]);
   };
 
-  const handleJsonUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const extractOrderNumberFromLuminaLink = (link: string): string | null => {
+    try {
+      // Remove the base URL and any query parameters
+      const cleanedLink = link
+        .replace(/^https:\/\/townsquarelumina\.com\/lumina\/view\/order\//, '')
+        .split('?')[0];
+      
+      // Validate it looks like a valid order ID (MongoDB ObjectId format)
+      if (cleanedLink.match(/^[0-9a-fA-F]{24}$/)) {
+        return cleanedLink;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  const handleLuminaLinkSubmit = async () => {
+    if (!luminaLink.trim()) {
+      setError('Please enter a Lumina Link');
+      return;
+    }
+
+    const orderNumber = extractOrderNumberFromLuminaLink(luminaLink.trim());
+    if (!orderNumber) {
+      setError('Invalid Lumina Link format. Please use: https://townsquarelumina.com/lumina/view/order/{orderNumber}');
+      return;
+    }
+
+    setIsLoadingCampaign(true);
+    setError('');
 
     try {
-      const text = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target?.result as string);
-        reader.onerror = reject;
-        reader.readAsText(file);
-      });
+      const response = await fetch(`https://api.edwinlovett.com/order?query=${orderNumber}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch campaign data: ${response.status} ${response.statusText}`);
+      }
 
-      const data = JSON.parse(text);
+      const data = await response.json();
       setJsonData(data);
       
       const tactics = extractTacticsFromJSON(data);
@@ -384,7 +413,9 @@ const CampaignPerformanceAnalyzer = () => {
       
       setError('');
     } catch (err: unknown) {
-      setError('Error parsing JSON file: ' + (err instanceof Error ? err.message : String(err)));
+      setError('Error fetching campaign data: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsLoadingCampaign(false);
     }
   };
 
@@ -459,6 +490,7 @@ const CampaignPerformanceAnalyzer = () => {
   const clearAndReset = () => {
     setJsonData(null);
     setCompanyInfo('');
+    setLuminaLink('');
     setDetectedTactics([]);
     setTacticUploads({});
     setTacticData({});
@@ -627,28 +659,17 @@ Format your response as JSON with this structure:
 
 Use the red color palette throughout. Focus on insights that lead to actionable improvements in targeting, messaging, and measurement.${modifierSettings ? ' Leverage the custom benchmark modifiers to provide more precise and relevant recommendations.' : ''}`;
 
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          "x-api-key": ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01"
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          model: "claude-3-5-sonnet-20241022",
-          max_tokens: 16000,
-          messages: [
-            { 
-              role: "user", 
-              content: prompt
-            }
-          ]
-        })
+        body: JSON.stringify({ prompt }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(`API request failed: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
+        throw new Error(`API request failed: ${response.status} - ${errorData.error || 'Unknown error'}`);
       }
 
       const data = await response.json();
@@ -833,9 +854,9 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
             >
               ✕
             </button>
-            <h2 className="text-xl font-semibold mb-3" style={{color: '#cf0e0f'}}>How to Use</h2>
-            <ol className="list-decimal list-inside space-y-2 text-gray-700">
-              <li>Upload your campaign JSON file containing line items and order data</li>
+            <h2 className="text-xl font-semibold mb-3 text-gray-900" style={{color: '#cf0e0f'}}>How to Use</h2>
+            <ol className="list-decimal list-inside space-y-2 text-gray-900">
+              <li>Enter a Lumina Link to automatically load campaign data from your order</li>
               <li>Provide company information (upload text file or paste directly)</li>
               <li>Upload specific performance tables for each detected tactic (organized by table type)</li>
               <li>Optionally configure custom benchmark modifiers for more precise analysis</li>
@@ -849,17 +870,17 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
         {showReanalyzeModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-              <h3 className="text-lg font-semibold mb-4" style={{color: '#cf0e0f'}}>
+              <h3 className="text-lg font-semibold mb-4 text-gray-900" style={{color: '#cf0e0f'}}>
                 Confirm Re-analysis
               </h3>
-              <p className="text-gray-700 mb-4">
+              <p className="text-gray-900 mb-4">
                 This will replace your current analysis results. Make sure to save your current analysis if needed.
               </p>
               
               {newFilesUploaded.length > 0 ? (
                 <div className="mb-4">
-                  <p className="text-sm font-medium text-gray-700 mb-2">New files uploaded since last analysis:</p>
-                  <ul className="text-sm text-gray-600 bg-gray-50 p-3 rounded max-h-32 overflow-y-auto">
+                  <p className="text-sm font-medium text-gray-900 mb-2">New files uploaded since last analysis:</p>
+                  <ul className="text-sm text-gray-900 bg-gray-50 p-3 rounded max-h-32 overflow-y-auto">
                     {newFilesUploaded.map((file, index) => (
                       <li key={index}>• {file}</li>
                     ))}
@@ -867,7 +888,7 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
                 </div>
               ) : (
                 <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                  <p className="text-sm text-yellow-700">
+                  <p className="text-sm text-yellow-800 font-medium">
                     ⚠️ No new files have been uploaded since the last analysis.
                   </p>
                 </div>
@@ -876,13 +897,13 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
               <div className="flex justify-end space-x-3">
                 <button
                   onClick={() => setShowReanalyzeModal(false)}
-                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="px-4 py-2 text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors font-medium"
                 >
                   Go Back
                 </button>
                 <button
                   onClick={proceedWithReanalysis}
-                  className="px-4 py-2 text-white rounded-lg hover:bg-red-700"
+                  className="px-4 py-2 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
                   style={{backgroundColor: '#cf0e0f'}}
                 >
                   Proceed with Re-analysis
@@ -896,7 +917,7 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
         <div className="mb-6 flex justify-between items-center">
           <button
             onClick={clearAndReset}
-            className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center"
+            className="px-4 py-2 text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 flex items-center transition-colors font-medium"
           >
             <span className="mr-2">🔄</span>
             Clear & Reset
@@ -905,40 +926,63 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
           {sectionsCollapsed && (
             <button
               onClick={() => setSectionsCollapsed(false)}
-              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="px-4 py-2 text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors font-medium"
             >
               ↕️ Expand Upload Sections
             </button>
           )}
         </div>
 
-        {/* Campaign JSON Upload */}
+        {/* Campaign Data via Lumina Link */}
         {!sectionsCollapsed && (
           <div className="mb-6 bg-white p-6 rounded-lg shadow-sm">
-            <h2 className="text-xl font-semibold mb-4" style={{color: '#cf0e0f'}}>
+            <h2 className="text-xl font-semibold mb-4 text-gray-900" style={{color: '#cf0e0f'}}>
               <Upload className="inline-block mr-2" />
-              Campaign Data (JSON)
+              Campaign Data (Lumina Link)
             </h2>
-            <label className="flex items-center justify-center w-full h-32 px-4 transition bg-white border-2 border-gray-300 border-dashed rounded-lg appearance-none cursor-pointer hover:border-red-400 focus:outline-none">
-              <div className="flex flex-col items-center space-y-2">
-                <Upload className="w-8 h-8 text-gray-400" />
-                <span className="text-gray-600">Drop JSON file here or click to upload</span>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">
+                  Lumina Link
+                </label>
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    value={luminaLink}
+                    onChange={(e) => setLuminaLink(e.target.value)}
+                    placeholder="https://townsquarelumina.com/lumina/view/order/67739fcd77ff89a87fc39608"
+                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-900"
+                    disabled={isLoadingCampaign}
+                  />
+                  <button
+                    onClick={handleLuminaLinkSubmit}
+                    disabled={isLoadingCampaign || !luminaLink.trim()}
+                    className="px-6 py-3 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium flex items-center"
+                    style={{backgroundColor: isLoadingCampaign ? undefined : '#cf0e0f'}}
+                  >
+                    {isLoadingCampaign ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      'Load Campaign'
+                    )}
+                  </button>
+                </div>
+                <p className="text-sm text-gray-600 mt-2">
+                  Enter a Lumina order link to automatically fetch campaign data
+                </p>
               </div>
-              <input
-                type="file"
-                className="hidden"
-                accept=".json"
-                onChange={handleJsonUpload}
-              />
-            </label>
+            </div>
             {jsonData && (
               <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded">
-                <p className="text-green-700">✓ Campaign data loaded successfully</p>
-                <p className="text-sm text-gray-600 mt-1">
+                <p className="text-green-700 font-medium">✓ Campaign data loaded successfully</p>
+                <p className="text-sm text-gray-900 mt-1">
                   Found {(jsonData?.lineItems as unknown[])?.length || 0} line items | Detected {detectedTactics.length} tactics
                 </p>
                 {detectedTactics.length > 0 && (
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-sm text-gray-900 mt-1">
                     Tactics: {detectedTactics.join(', ')}
                   </p>
                 )}
@@ -950,27 +994,27 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
         {/* Company Information */}
         {!sectionsCollapsed && (
           <div className="mb-6 bg-white p-6 rounded-lg shadow-sm">
-            <h2 className="text-xl font-semibold mb-4" style={{color: '#cf0e0f'}}>
+            <h2 className="text-xl font-semibold mb-4 text-gray-900" style={{color: '#cf0e0f'}}>
               <FileText className="inline-block mr-2" />
               Company Information
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Upload Text File</label>
+                <label className="block text-sm font-medium text-gray-900 mb-2">Upload Text File</label>
                 <input
                   type="file"
                   accept=".txt"
                   onChange={handleCompanyFileUpload}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+                  className="block w-full text-sm text-gray-900 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100 file:cursor-pointer cursor-pointer"
                 />
               </div>
               <div className="md:col-span-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Or Paste Information</label>
+                <label className="block text-sm font-medium text-gray-900 mb-2">Or Paste Information</label>
                 <textarea
                   value={companyInfo}
                   onChange={(e) => setCompanyInfo(e.target.value)}
                   placeholder="Paste company information here..."
-                  className="w-full h-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full h-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900 placeholder-gray-500"
                 />
               </div>
             </div>
@@ -980,19 +1024,19 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
         {/* Tactic-Specific Performance Tables */}
         {detectedTactics.length > 0 && !sectionsCollapsed && (
           <div className="mb-6 bg-white p-6 rounded-lg shadow-sm">
-            <h2 className="text-xl font-semibold mb-4" style={{color: '#cf0e0f'}}>
+            <h2 className="text-xl font-semibold mb-4 text-gray-900" style={{color: '#cf0e0f'}}>
               <TrendingUp className="inline-block mr-2" />
               Performance Tables by Tactic
             </h2>
-            <p className="text-gray-600 mb-4">
+            <p className="text-gray-900 mb-4">
               Upload relevant performance tables for each tactic. Not all tables are required - focus on the ones most important for your analysis.
             </p>
             
             {detectedTactics.map((tactic) => (
               <div key={tactic} className="mb-8 border border-gray-200 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold" style={{color: '#cf0e0f'}}>{tactic}</h3>
-                  <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-sm">
+                  <h3 className="text-lg font-semibold text-gray-900" style={{color: '#cf0e0f'}}>{tactic}</h3>
+                  <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-sm font-medium">
                     {getUploadedTablesCount(tactic)} / {TACTIC_TABLES[tactic]?.length || 0} tables uploaded
                   </span>
                 </div>
@@ -1003,20 +1047,20 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
                     const isUploaded = tacticUploads[uploadKey];
                     
                     return (
-                      <div key={tableName} className="border border-gray-200 rounded p-3">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <div key={tableName} className="border border-gray-200 rounded p-3 hover:border-red-300 transition-colors">
+                        <label className="block text-sm font-medium text-gray-900 mb-2">
                           {tableName}
                         </label>
                         <input
                           type="file"
                           accept=".csv"
                           onChange={(e) => handleTacticTableUpload(e, tactic, tableName)}
-                          className="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+                          className="block w-full text-xs text-gray-900 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100 file:cursor-pointer cursor-pointer"
                         />
                         {isUploaded && (
                           <div className="mt-1 flex items-center">
                             <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
-                            <span className="text-xs text-green-600">Uploaded</span>
+                            <span className="text-xs text-green-600 font-medium">Uploaded</span>
                           </div>
                         )}
                       </div>
@@ -1031,14 +1075,14 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
         {/* Time Range Selection */}
         {jsonData && !sectionsCollapsed && (
           <div className="mb-6 bg-white p-6 rounded-lg shadow-sm">
-            <h2 className="text-xl font-semibold mb-4" style={{color: '#cf0e0f'}}>
+            <h2 className="text-xl font-semibold mb-4 text-gray-900" style={{color: '#cf0e0f'}}>
               <Calendar className="inline-block mr-2" />
               Analysis Time Range
             </h2>
             <select
               value={timeRange}
               onChange={(e) => setTimeRange(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900 bg-white hover:border-red-400 transition-colors"
             >
               <option value="7">Last 7 days</option>
               <option value="14">Last 14 days</option>
@@ -1082,14 +1126,14 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
         {isLoading && (
           <div className="flex flex-col items-center justify-center py-12">
             <Loader2 className="w-10 h-10 animate-spin" style={{color: '#cf0e0f'}} />
-            <p className="mt-3 text-gray-600">{loadingStatus}</p>
+            <p className="mt-3 text-gray-900 font-medium">{loadingStatus}</p>
           </div>
         )}
 
         {/* Error Display */}
         {error && (
-          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-            {error}
+          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-800 font-medium">{error}</p>
           </div>
         )}
 
@@ -1119,32 +1163,32 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
 
             {/* Executive Summary */}
             <div className="bg-white p-6 rounded-lg shadow-sm">
-              <h2 className="text-2xl font-bold mb-4" style={{color: '#cf0e0f'}}>Executive Summary</h2>
+              <h2 className="text-2xl font-bold mb-4 text-gray-900" style={{color: '#cf0e0f'}}>Executive Summary</h2>
               <div className="prose max-w-none">
-                <p className="text-gray-700 leading-relaxed whitespace-pre-line">{analysisResult.executiveSummary}</p>
+                <p className="text-gray-900 leading-relaxed whitespace-pre-line">{analysisResult.executiveSummary}</p>
               </div>
             </div>
 
             {/* Performance Analysis */}
             <div className="bg-white p-6 rounded-lg shadow-sm">
-              <h2 className="text-2xl font-bold mb-4" style={{color: '#cf0e0f'}}>Performance Analysis by Tactic</h2>
+              <h2 className="text-2xl font-bold mb-4 text-gray-900" style={{color: '#cf0e0f'}}>Performance Analysis by Tactic</h2>
               <div className="prose max-w-none">
-                <p className="text-gray-700 leading-relaxed whitespace-pre-line">{analysisResult.performanceAnalysis}</p>
+                <p className="text-gray-900 leading-relaxed whitespace-pre-line">{analysisResult.performanceAnalysis}</p>
               </div>
             </div>
 
             {/* Trend Analysis */}
             <div className="bg-white p-6 rounded-lg shadow-sm">
-              <h2 className="text-2xl font-bold mb-4" style={{color: '#cf0e0f'}}>Trend Analysis</h2>
+              <h2 className="text-2xl font-bold mb-4 text-gray-900" style={{color: '#cf0e0f'}}>Trend Analysis</h2>
               <div className="prose max-w-none">
-                <p className="text-gray-700 leading-relaxed whitespace-pre-line">{analysisResult.trendAnalysis}</p>
+                <p className="text-gray-900 leading-relaxed whitespace-pre-line">{analysisResult.trendAnalysis}</p>
               </div>
             </div>
 
             {/* Visualizations */}
             {analysisResult.visualizations && analysisResult.visualizations.length > 0 && (
               <div className="bg-white p-6 rounded-lg shadow-sm">
-                <h2 className="text-2xl font-bold mb-6" style={{color: '#cf0e0f'}}>Performance Insights & Data Visualizations</h2>
+                <h2 className="text-2xl font-bold mb-6 text-gray-900" style={{color: '#cf0e0f'}}>Performance Insights & Data Visualizations</h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   {analysisResult.visualizations.map((viz, index) => renderVisualization(viz, index))}
                 </div>
@@ -1153,9 +1197,9 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
 
             {/* Recommendations */}
             <div className="bg-white p-6 rounded-lg shadow-sm">
-              <h2 className="text-2xl font-bold mb-4" style={{color: '#cf0e0f'}}>Strategic Optimization Recommendations</h2>
+              <h2 className="text-2xl font-bold mb-4 text-gray-900" style={{color: '#cf0e0f'}}>Strategic Optimization Recommendations</h2>
               <div className="prose max-w-none">
-                <p className="text-gray-700 leading-relaxed whitespace-pre-line">{analysisResult.recommendations}</p>
+                <p className="text-gray-900 leading-relaxed whitespace-pre-line">{analysisResult.recommendations}</p>
               </div>
             </div>
           </div>
@@ -1236,7 +1280,7 @@ const ModifierSettingsPage: React.FC<ModifierSettingsPageProps> = ({
             <Info className="w-5 h-5 text-blue-600 mr-3 mt-0.5" />
             <div>
               <h3 className="text-sm font-medium text-blue-900 mb-1">About Modifier Settings</h3>
-              <p className="text-sm text-blue-700">
+              <p className="text-sm text-blue-800">
                 These benchmarks will be automatically injected into your AI analysis reports to provide contextual insights. 
                 Adjust the values based on your industry knowledge and historical performance data.
               </p>
@@ -1246,12 +1290,12 @@ const ModifierSettingsPage: React.FC<ModifierSettingsPageProps> = ({
 
         {/* Tactic Selector */}
         <div className="mb-6 bg-white p-4 rounded-lg shadow-sm">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Select Tactic to Configure</label>
+          <label className="block text-sm font-medium text-gray-900 mb-2">Select Tactic to Configure</label>
           <div className="relative">
             <select
               value={selectedTactic}
               onChange={(e) => setSelectedTactic(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 appearance-none"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 appearance-none text-gray-900 bg-white hover:border-red-400 transition-colors"
             >
               {detectedTactics.map(tactic => (
                 <option key={tactic} value={tactic}>{tactic}</option>
