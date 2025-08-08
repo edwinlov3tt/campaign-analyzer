@@ -174,5 +174,14 @@ FORMATTING REQUIREMENTS:
 
 ${customModifiers?.additionalInstructions ? `ADDITIONAL INSTRUCTIONS: ${customModifiers.additionalInstructions}` : ''}
 
-Remember: Each tactic gets its own detailed analysis section. Do not group tactics into generic categories like "Funnel Analysis" or "Device Performance" - analyze each tactic individually.`;
+Remember: Each tactic gets its own detailed analysis section. Do not group tactics into generic categories like "Funnel Analysis" or "Device Performance" - analyze each tactic individually.
+
+CRITICAL JSON FORMATTING REQUIREMENTS:
+- Your response MUST be valid JSON format
+- Use double quotes for all string values and keys
+- Escape any internal quotes using \\"
+- Do not include line breaks within string values - use \\n for line breaks
+- Do not include unescaped control characters
+- Ensure all brackets and braces are properly closed
+- Test your JSON structure before responding`;
 }

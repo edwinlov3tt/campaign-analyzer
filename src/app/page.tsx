@@ -870,8 +870,31 @@ Format your response as JSON with this structure:
       let responseText = data.content[0].text;
       
       // Clean up response and parse JSON
-      responseText = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      const result = JSON.parse(responseText);
+      responseText = responseText
+        .replace(/```json\n?/g, "")
+        .replace(/```\n?/g, "")
+        .trim();
+      
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('JSON Parse Error:', parseError);
+        console.error('Raw response text (first 500 chars):', responseText.substring(0, 500));
+        
+        // Try to extract JSON from the response if it's embedded
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            result = JSON.parse(jsonMatch[0]);
+          } catch (secondParseError) {
+            console.error('Second parse attempt failed:', secondParseError);
+            throw new Error(`Unable to parse AI response as JSON. First 200 chars: ${responseText.substring(0, 200)}...`);
+          }
+        } else {
+          throw new Error(`Unable to find JSON in AI response. Response: ${responseText.substring(0, 200)}...`);
+        }
+      }
       
       setAnalysisResult(result);
     } catch (err: unknown) {
