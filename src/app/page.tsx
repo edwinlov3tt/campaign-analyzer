@@ -505,6 +505,158 @@ const CampaignPerformanceAnalyzer = () => {
     }
   };
 
+  // Handle bulk CSV upload
+  const handleBulkCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    const groupedTactics = groupTacticsByProduct(detectedTactics);
+    const availableProducts = Object.keys(groupedTactics);
+    let processedCount = 0;
+    let errorCount = 0;
+
+    for (const file of files) {
+      if (!file.name.endsWith('.csv')) continue;
+
+      try {
+        // Detect product and table type
+        const detectedProduct = detectProductFromFilename(file.name, availableProducts);
+        if (detectedProduct && groupedTactics[detectedProduct]) {
+          const productData = groupedTactics[detectedProduct];
+          const mainTactic = productData.tactics[0];
+          const availableTables = getTablesForTactic(mainTactic);
+          const detectedTable = detectTableType(file.name, availableTables);
+          
+          if (detectedTable) {
+            const text = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = (e) => resolve(e.target?.result as string);
+              reader.onerror = reject;
+              reader.readAsText(file);
+            });
+            
+            const parsed = parseCSVData(text);
+            const key = `${mainTactic}_${detectedTable}`;
+            
+            setTacticUploads(prev => ({
+              ...prev,
+              [key]: file
+            }));
+            
+            setTacticData(prev => ({
+              ...prev,
+              [key]: {
+                fileName: file.name,
+                tableName: detectedTable,
+                tactic: mainTactic,
+                ...parsed
+              }
+            }));
+            
+            processedCount++;
+          } else {
+            console.warn(`Could not detect table type for ${file.name}`);
+          }
+        } else {
+          console.warn(`Could not detect product for ${file.name}`);
+        }
+      } catch (err) {
+        console.error(`Error processing ${file.name}:`, err);
+        errorCount++;
+      }
+    }
+
+    if (processedCount > 0) {
+      setError('');
+    }
+    if (errorCount > 0) {
+      setError(`Processed ${processedCount} files successfully, ${errorCount} files had errors.`);
+    }
+  };
+
+  // Handle product-specific bulk upload
+  const handleProductSpecificBulkUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>, 
+    product: string, 
+    tactics: string[]
+  ) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    const mainTactic = tactics[0];
+    const availableTables = getTablesForTactic(mainTactic);
+    let processedCount = 0;
+
+    for (const file of files) {
+      if (!file.name.endsWith('.csv')) continue;
+
+      try {
+        const detectedTable = detectTableType(file.name, availableTables);
+        if (detectedTable) {
+          const text = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.onerror = reject;
+            reader.readAsText(file);
+          });
+          
+          const parsed = parseCSVData(text);
+          const key = `${mainTactic}_${detectedTable}`;
+          
+          setTacticUploads(prev => ({
+            ...prev,
+            [key]: file
+          }));
+          
+          setTacticData(prev => ({
+            ...prev,
+            [key]: {
+              fileName: file.name,
+              tableName: detectedTable,
+              tactic: mainTactic,
+              ...parsed
+            }
+          }));
+          
+          processedCount++;
+        }
+      } catch (err) {
+        console.error(`Error processing ${file.name}:`, err);
+      }
+    }
+
+    if (processedCount > 0) {
+      setError('');
+    }
+  };
+
+  // Handle table type change for manual correction
+  const handleTableTypeChange = (tactic: string, oldTableName: string, newTableName: string) => {
+    const oldKey = `${tactic}_${oldTableName}`;
+    const newKey = `${tactic}_${newTableName}`;
+    
+    if (tacticUploads[oldKey]) {
+      setTacticUploads(prev => {
+        const newUploads = { ...prev };
+        newUploads[newKey] = newUploads[oldKey];
+        delete newUploads[oldKey];
+        return newUploads;
+      });
+      
+      setTacticData(prev => {
+        const newData = { ...prev };
+        if (newData[oldKey]) {
+          newData[newKey] = {
+            ...newData[oldKey],
+            tableName: newTableName
+          };
+          delete newData[oldKey];
+        }
+        return newData;
+      });
+    }
+  };
+
   const clearAndReset = () => {
     setJsonData(null);
     setCompanyInfo('');
@@ -861,6 +1013,68 @@ ${aiModifiers.additionalInstructions}` : ''}`;
     return tacticTables.filter(table => tacticUploads[`${tactic}_${table}`]).length;
   };
 
+  // Group tactics by product and subproduct
+  const groupTacticsByProduct = (tactics: string[]) => {
+    const grouped: Record<string, { subProducts: string[]; tactics: string[] }> = {};
+    
+    tactics.forEach(tactic => {
+      const mapping = mapTacticToProduct(tactic);
+      if (mapping) {
+        const key = mapping.product;
+        if (!grouped[key]) {
+          grouped[key] = { subProducts: [], tactics: [] };
+        }
+        grouped[key].tactics.push(tactic);
+        mapping.subProducts.forEach(sub => {
+          if (!grouped[key].subProducts.includes(sub)) {
+            grouped[key].subProducts.push(sub);
+          }
+        });
+      } else {
+        // Handle tactics without mapping
+        if (!grouped[tactic]) {
+          grouped[tactic] = { subProducts: [], tactics: [tactic] };
+        }
+      }
+    });
+    
+    return grouped;
+  };
+
+  // Auto-detect table type from CSV filename
+  const detectTableType = (filename: string, availableTables: string[]): string | null => {
+    const cleanName = filename.toLowerCase()
+      .replace(/^report-/, '')
+      .replace(/\s*\(\d+\)\.csv$/, '.csv')
+      .replace(/\.csv$/, '');
+    
+    // Try exact match first
+    const exactMatch = availableTables.find(table => 
+      cleanName.includes(table.toLowerCase().replace(/\s+/g, '-'))
+    );
+    if (exactMatch) return exactMatch;
+    
+    // Try partial matches
+    const partialMatch = availableTables.find(table => {
+      const tableWords = table.toLowerCase().split(' ');
+      return tableWords.every(word => cleanName.includes(word.replace(/\s+/g, '-')));
+    });
+    
+    return partialMatch || null;
+  };
+
+  // Auto-detect product from CSV filename
+  const detectProductFromFilename = (filename: string, availableProducts: string[]): string | null => {
+    const cleanName = filename.toLowerCase().replace(/^report-/, '').replace(/\s*\(\d+\)\.csv$/, '.csv');
+    
+    const productMatch = availableProducts.find(product => {
+      const productKey = product.toLowerCase().replace(/\s+/g, '').replace(/[^a-z]/g, '');
+      return cleanName.includes(productKey) || cleanName.includes(product.toLowerCase().replace(/\s+/g, '-'));
+    });
+    
+    return productMatch || null;
+  };
+
   if (currentView === 'modifiers') {
     return <ModifierSettingsPage 
       detectedTactics={detectedTactics} 
@@ -1108,56 +1322,140 @@ ${aiModifiers.additionalInstructions}` : ''}`;
           </div>
         )}
 
-        {/* Tactic-Specific Performance Tables */}
+        {/* Bulk CSV Upload */}
         {detectedTactics.length > 0 && !sectionsCollapsed && (
-          <div className="mb-6 bg-white p-6 rounded-lg shadow-sm">
-            <h2 className="text-xl font-semibold mb-4 text-gray-900" style={{color: '#cf0e0f'}}>
-              <TrendingUp className="inline-block mr-2" />
-              Performance Tables by Tactic
+          <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
+            <h2 className="text-2xl font-bold mb-4 text-gray-900" style={{color: '#cf0e0f'}}>
+              <Upload className="inline-block mr-2" />
+              Bulk CSV Upload
             </h2>
             <p className="text-gray-900 mb-4">
-              Upload relevant performance tables for each tactic. Not all tables are required - focus on the ones most important for your analysis.
+              Upload multiple CSV files at once. Files will be auto-sorted by product and table type based on filename.
             </p>
             
-            {detectedTactics.map((tactic) => (
-              <div key={tactic} className="mb-8 border border-gray-200 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900" style={{color: '#cf0e0f'}}>{tactic}</h3>
-                  <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-sm font-medium">
-                    {getUploadedTablesCount(tactic)} / {getTablesForTactic(tactic).length} tables uploaded
-                  </span>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {getTablesForTactic(tactic).map((tableName) => {
-                    const uploadKey = `${tactic}_${tableName}`;
-                    const isUploaded = tacticUploads[uploadKey];
-                    
-                    return (
-                      <div key={tableName} className="border border-gray-200 rounded p-3 hover:border-red-300 transition-colors">
-                        <label className="block text-sm font-medium text-gray-900 mb-2">
-                          {tableName}
-                        </label>
-                        <input
-                          type="file"
-                          accept=".csv"
-                          onChange={(e) => handleTacticTableUpload(e, tactic, tableName)}
-                          className="block w-full text-xs text-gray-900 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100 file:cursor-pointer cursor-pointer"
-                        />
-                        {isUploaded && (
-                          <div className="mt-1 flex items-center">
-                            <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
-                            <span className="text-xs text-green-600 font-medium">Uploaded</span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-red-300 transition-colors">
+              <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600 mb-2">Drag and drop CSV files here, or</p>
+              <input
+                type="file"
+                id="bulk-upload"
+                accept=".csv"
+                multiple
+                onChange={handleBulkCSVUpload}
+                className="hidden"
+              />
+              <label 
+                htmlFor="bulk-upload"
+                className="inline-flex items-center px-4 py-2 text-white rounded-lg hover:bg-red-700 cursor-pointer transition-colors"
+                style={{backgroundColor: '#cf0e0f'}}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Choose Files
+              </label>
+              <p className="text-xs text-gray-500 mt-2">
+                Supported format: report-{'{product}'}-{'{table-type}'}.csv (e.g., report-meta-monthly-performance.csv)
+              </p>
+            </div>
           </div>
         )}
+
+        {/* Performance Tables by Product */}
+        {detectedTactics.length > 0 && !sectionsCollapsed && (() => {
+          const groupedTactics = groupTacticsByProduct(detectedTactics);
+          return (
+            <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900" style={{color: '#cf0e0f'}}>
+                <TrendingUp className="inline-block mr-2" />
+                Performance Tables by Product
+              </h2>
+              <p className="text-gray-900 mb-4">
+                Upload specific performance tables for each product. Tables are auto-detected from bulk uploads or individual uploads.
+              </p>
+              
+              {Object.entries(groupedTactics).map(([product, data]) => {
+                const displayTitle = data.subProducts.length > 0 
+                  ? `${product}: ${data.subProducts.join(', ')}`
+                  : product;
+                const mainTactic = data.tactics[0]; // Use first tactic for table lookup
+                const availableTables = getTablesForTactic(mainTactic);
+                
+                return (
+                  <div key={product} className="mb-8 border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900" style={{color: '#cf0e0f'}}>
+                        {displayTitle}
+                      </h3>
+                      <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-sm font-medium">
+                        {getUploadedTablesCount(mainTactic)} / {availableTables.length} tables uploaded
+                      </span>
+                    </div>
+                    
+                    {/* Bulk upload for this specific product */}
+                    <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded">
+                      <label className="block text-sm font-medium text-gray-900 mb-2">
+                        Bulk Upload for {product}
+                      </label>
+                      <input
+                        type="file"
+                        accept=".csv"
+                        multiple
+                        onChange={(e) => handleProductSpecificBulkUpload(e, product, data.tactics)}
+                        className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-white hover:bg-gray-100 focus:outline-none p-2"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Files will be auto-detected and sorted to the correct table types
+                      </p>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {availableTables.map((tableName) => {
+                        const uploadKey = `${mainTactic}_${tableName}`;
+                        const isUploaded = tacticUploads[uploadKey];
+                        
+                        return (
+                          <div key={tableName} className="border border-gray-200 rounded p-3 hover:border-red-300 transition-colors">
+                            <div className="flex justify-between items-start mb-2">
+                              <label className="block text-sm font-medium text-gray-900">
+                                {tableName}
+                              </label>
+                              {isUploaded && (
+                                <CheckCircle className="w-4 h-4 text-green-500" />
+                              )}
+                            </div>
+                            
+                            {/* Dropdown for manual table type selection */}
+                            <select
+                              value={tableName}
+                              onChange={(e) => handleTableTypeChange(mainTactic, tableName, e.target.value)}
+                              className="w-full px-2 py-1 text-xs border border-gray-300 rounded mb-2 focus:outline-none focus:ring-1 focus:ring-red-500 bg-white"
+                              title="Change table type if auto-detection was incorrect"
+                            >
+                              {availableTables.map(table => (
+                                <option key={table} value={table}>{table}</option>
+                              ))}
+                            </select>
+                            
+                            <input
+                              type="file"
+                              accept=".csv"
+                              onChange={(e) => handleTacticTableUpload(e, mainTactic, tableName)}
+                              className="block w-full text-xs text-gray-900 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100 file:cursor-pointer cursor-pointer"
+                            />
+                            {isUploaded && (
+                              <div className="mt-2 text-xs text-green-600">
+                                📁 {tacticData[uploadKey]?.fileName}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {/* Time Range Selection */}
         {jsonData && !sectionsCollapsed && (
