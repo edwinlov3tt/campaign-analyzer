@@ -338,19 +338,20 @@ const CampaignPerformanceAnalyzer = () => {
     };
 
     // Try to extract dates from campaign data
-    if (campaignData.startDate) {
+    if (campaignData.startDate && typeof campaignData.startDate === 'string') {
       timing.campaignStart = new Date(campaignData.startDate);
     }
-    if (campaignData.endDate) {
+    if (campaignData.endDate && typeof campaignData.endDate === 'string') {
       timing.campaignEnd = new Date(campaignData.endDate);
     }
     
     // Also check flightDates if available
-    if (!timing.campaignStart && campaignData.flightDates?.startDate) {
-      timing.campaignStart = new Date(campaignData.flightDates.startDate);
+    const flightDates = campaignData.flightDates as Record<string, unknown> | undefined;
+    if (!timing.campaignStart && flightDates?.startDate && typeof flightDates.startDate === 'string') {
+      timing.campaignStart = new Date(flightDates.startDate);
     }
-    if (!timing.campaignEnd && campaignData.flightDates?.endDate) {
-      timing.campaignEnd = new Date(campaignData.flightDates.endDate);
+    if (!timing.campaignEnd && flightDates?.endDate && typeof flightDates.endDate === 'string') {
+      timing.campaignEnd = new Date(flightDates.endDate);
     }
 
     // Determine campaign status
