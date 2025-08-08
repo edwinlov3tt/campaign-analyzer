@@ -9,7 +9,7 @@ export interface SubProduct {
 
 export interface TacticInfo {
   platform: string[];
-  category: string;
+  category: string | string[];
   product: string;
   subProducts: Record<string, SubProduct>;
 }
