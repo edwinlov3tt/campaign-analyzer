@@ -51,7 +51,7 @@ export function mapTacticToProduct(tacticName: string): { product: string; subPr
         aliases.some(alias => alias.toLowerCase() === tacticLower)) {
       // Find tactics that use this platform
       const matchingTactics = Object.entries(tacticCategories.tactics)
-        .filter(([_, tactic]) => tactic.platform.some(p => p.toLowerCase() === tacticLower));
+        .filter(([, tactic]) => tactic.platform.some(p => p.toLowerCase() === tacticLower));
       
       if (matchingTactics.length > 0) {
         return {

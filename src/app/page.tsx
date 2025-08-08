@@ -4,8 +4,8 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { Upload, FileText, Loader2, Calendar, BarChart3, TrendingUp, Target, Copy, CheckCircle, Settings, Save, ChevronDown, Info, ArrowLeft, Eye, EyeOff } from 'lucide-react';
-import { TACTIC_TABLES, getTablesForTactic } from '@/data/tacticTables';
-import { mapTacticToProduct, normalizeTacticName, tacticCategories } from '@/data/tacticCategories';
+import { getTablesForTactic } from '@/data/tacticTables';
+import { mapTacticToProduct, normalizeTacticName } from '@/data/tacticCategories';
 
 // TypeScript interfaces
 interface TacticData {
@@ -327,9 +327,9 @@ const CampaignPerformanceAnalyzer = () => {
   };
 
   // Helper function to analyze campaign timing
-  const analyzeCampaignTiming = (campaignData: any) => {
+  const analyzeCampaignTiming = (campaignData: Record<string, unknown>) => {
     const now = new Date();
-    let timing: CampaignTiming = {
+    const timing: CampaignTiming = {
       campaignStart: null,
       campaignEnd: null,
       reportGenerationTime: now,
