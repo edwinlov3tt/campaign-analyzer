@@ -201,6 +201,20 @@ const CampaignPerformanceAnalyzer = () => {
   const [newFilesUploaded, setNewFilesUploaded] = useState<string[]>([]);
   const [currentView, setCurrentView] = useState('analyzer');
   const [modifierSettings, setModifierSettings] = useState<ModifierData | null>(null);
+  const [aiModifiers, setAiModifiers] = useState<AIModifiers>({
+    temperature: 0.7,
+    tone: 'Professional',
+    additionalInstructions: '',
+    hideChartsAndTables: false
+  });
+  const [campaignTiming, setCampaignTiming] = useState<CampaignTiming>({
+    campaignStart: null,
+    campaignEnd: null,
+    reportGenerationTime: new Date(),
+    status: 'ongoing',
+    isPartialPeriod: false
+  });
+  const [showChartsAndTables, setShowChartsAndTables] = useState(true);
 
   // Check for API key on mount
   useEffect(() => {
@@ -212,12 +226,22 @@ const CampaignPerformanceAnalyzer = () => {
   // Load modifier settings on component mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      // Load modifier settings
       const savedModifiers = localStorage.getItem('campaignModifiers');
       if (savedModifiers) {
         try {
           setModifierSettings(JSON.parse(savedModifiers));
         } catch (err) {
           console.error('Error loading modifier settings:', err);
+        }
+      }
+      // Load AI modifiers
+      const savedAiModifiers = localStorage.getItem('aiModifiers');
+      if (savedAiModifiers) {
+        try {
+          setAiModifiers(JSON.parse(savedAiModifiers));
+        } catch (err) {
+          console.error('Error loading AI modifier settings:', err);
         }
       }
     }
