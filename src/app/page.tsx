@@ -6,6 +6,7 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { Upload, FileText, Loader2, Calendar, BarChart3, TrendingUp, Target, Copy, CheckCircle, Settings, Save, ChevronDown, Info, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { getTablesForTactic } from '@/data/tacticTables';
 import { mapTacticToProduct, normalizeTacticName } from '@/data/tacticCategories';
+import { generateSystemPrompt } from '@/data/aiGuidelines';
 
 // TypeScript interfaces
 interface TacticData {
@@ -189,7 +190,9 @@ const CampaignPerformanceAnalyzer = () => {
   const [detectedTactics, setDetectedTactics] = useState<string[]>([]);
   const [tacticUploads, setTacticUploads] = useState<Record<string, File>>({});
   const [tacticData, setTacticData] = useState<Record<string, TacticData>>({});
-  const [timeRange, setTimeRange] = useState('30');
+  const [timeRange, setTimeRange] = useState('Last 30 days');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState('');
@@ -721,8 +724,8 @@ ${analysisResult.recommendations}
   };
 
   const generateAnalysis = async () => {
-    if (!jsonData || !companyInfo.trim()) {
-      setError('Please upload campaign JSON and provide company information');
+    if (!jsonData) {
+      setError('Please upload campaign JSON data before analyzing');
       return;
     }
 
@@ -782,16 +785,6 @@ ${timingContext}
 
 Use this context when analyzing performance trends and seasonal patterns. If you notice performance changes in recent months, consider whether we are currently in that time period when making recommendations.`;
 
-      // Build AI modifiers context
-      let aiModifierContext = '';
-      if (aiModifiers) {
-        aiModifierContext = `
-AI RESPONSE MODIFIERS:
-- Temperature: ${aiModifiers.temperature} (${aiModifiers.temperature < 0.3 ? 'Very focused/deterministic' : aiModifiers.temperature < 0.7 ? 'Balanced' : 'Creative/varied'})
-- Tone: ${aiModifiers.tone}
-- Additional Instructions: ${aiModifiers.additionalInstructions || 'None'}
-- Charts/Tables: ${aiModifiers.hideChartsAndTables ? 'HIDE (text analysis only)' : 'Include visualizations'}`;
-      }
 
       // Build tactic mapping context
       const tacticMappingContext = `
@@ -802,73 +795,47 @@ ${detectedTactics.map(tactic => {
   return mapping ? `- ${tactic} → Product: ${mapping.product}, Subproducts: ${mapping.subProducts.join(', ')}` : `- ${tactic} → [No mapping found]`;
 }).join('\n')}`;
 
-      const prompt = `As a digital marketing analyst, analyze this campaign performance data and provide a comprehensive report.
+      // Generate the system prompt using AI guidelines
+      const systemPrompt = generateSystemPrompt(
+        timeRange,
+        companyInfo || undefined,
+        {
+          temperature: aiModifiers.temperature,
+          tone: aiModifiers.tone.toLowerCase(),
+          additionalInstructions: aiModifiers.additionalInstructions
+        }
+      );
+
+      const prompt = `${systemPrompt}
+
 ${dateContext}
 
-COMPANY INFORMATION:
+${companyInfo ? `COMPANY INFORMATION:
 ${companyInfo}
-
+` : ''}
 CAMPAIGN DATA:
 ${JSON.stringify(jsonData, null, 2)}
 
 PERFORMANCE TABLE DATA:
 ${JSON.stringify(tacticData, null, 2)}
-
-TIME RANGE: Last ${timeRange} days
 ${modifierContext}
-${aiModifierContext}
 ${tacticMappingContext}
 
-Based on the uploaded performance tables${modifierSettings ? ' and custom benchmark modifiers' : ''}, provide detailed analysis using this EXACT 5-point structure:
+${modifierSettings ? 'CUSTOM BENCHMARKS: Leverage the provided custom benchmark modifiers to provide more precise and relevant recommendations.' : ''}
 
-1. HIGH-LEVEL PERFORMANCE STORY
-   - Connect performance to campaign goals (awareness, engagement, conversion)
-   - Highlight how campaign timing affects current delivery${campaignTiming.isPartialPeriod ? ' (PARTIAL PERIOD WARNING)' : ''}
-   - Present single-value averages for key metrics (not ranges)
-   - Include Product and Subproduct mapping for each tactic
-   ${modifierSettings ? '- Compare against your custom benchmarks' : ''}
-
-2. FUNNEL-STAGE EVALUATION
-   - Analyze what each tactic is optimized to achieve
-   - Map tactics to funnel stages (awareness → consideration → conversion)
-   - Evaluate performance based on intended funnel position
-   - Single average values only (e.g., "1.46% CTR avg" not "0.97-1.95% CTR")
-
-3. RELATIVE PERFORMANCE ANALYSIS
-   - Compare creatives, audiences, and time periods
-   - Include statistical confidence notes when sample sizes are small
-   - Day-over-day, week-over-week, month-over-month comparisons
-   - Geographic and demographic performance variations
-   ${modifierSettings ? '- Benchmark against your custom seasonal/regional modifiers' : ''}
-
-4. SPECIFIC ACTIONABLE IMPROVEMENTS
-   - Frame underperformance as opportunities ("here's how we'll improve")
-   - Provide concrete tests or changes to implement
-   - Focus on targeting, messaging, and measurement optimizations
-   - Call out small sample sizes explicitly
-   - Keep language constructive and solution-oriented
-
-5. WINS, RISKS, AND PRIORITIZATION
-   - Summarize top performing elements to scale
-   - Identify risks that need immediate attention
-   - Recommend prioritization for next period
-   - Maintain optimistic, encouraging tone
-   - Note any data limitations due to campaign timing
-
-${aiModifiers.hideChartsAndTables ? 'IMPORTANT: User has requested NO CHARTS OR TABLES. Provide text analysis only.' : `6. DATA VISUALIZATIONS
+${aiModifiers.hideChartsAndTables ? 'IMPORTANT: User has requested NO CHARTS OR TABLES. Provide text analysis only.' : `VISUALIZATION REQUIREMENTS:
    Create 4-6 charts showing key insights:
-   - Tactic performance with Product/Subproduct labels
-   - Geographic performance patterns
-   - Device/demographic breakdowns
+   - Individual tactic performance with Product/Subproduct labels
+   - Geographic performance patterns where available
    - Trend analysis with timing context
-   - Creative performance rankings`}
+   - Creative performance rankings where available`}
 
 Format your response as JSON with this structure:
 {
-  "executiveSummary": "string (Section 1: High-Level Performance Story)",
-  "performanceAnalysis": "string (Section 2: Funnel-Stage Evaluation + Section 3: Relative Analysis)", 
-  "trendAnalysis": "string (Section 4: Specific Actionable Improvements)",
-  "recommendations": "string (Section 5: Wins, Risks, and Prioritization)",
+  "executiveSummary": "string (Executive Summary section)",
+  "performanceAnalysis": "string (Performance Analysis by Tactic section with individual tactic breakdowns)", 
+  "trendAnalysis": "string (Trend Analysis with Monthly Performance Trends and Pattern Analysis)",
+  "recommendations": "string (Strategic Optimization Recommendations organized by Geographic, Creative, Audience, Measurement categories)",
   ${aiModifiers.hideChartsAndTables ? '"visualizations": []' : `"visualizations": [
     {
       "type": "bar_chart|line_chart|pie_chart|area_chart",
@@ -880,12 +847,7 @@ Format your response as JSON with this structure:
       }
     }
   ]`}
-}
-
-Use the red color palette throughout. Adopt a ${aiModifiers.tone.toLowerCase()} tone as requested. Focus on insights that lead to actionable improvements in targeting, messaging, and measurement.${modifierSettings ? ' Leverage the custom benchmark modifiers to provide more precise and relevant recommendations.' : ''}
-
-${aiModifiers.additionalInstructions ? `ADDITIONAL USER INSTRUCTIONS:
-${aiModifiers.additionalInstructions}` : ''}`;
+}`;
 
       const response = await fetch('/api/analyze', {
         method: 'POST',
@@ -1427,11 +1389,12 @@ ${aiModifiers.additionalInstructions}` : ''}`;
                             <select
                               value={tableName}
                               onChange={(e) => handleTableTypeChange(mainTactic, tableName, e.target.value)}
-                              className="w-full px-2 py-1 text-xs border border-gray-300 rounded mb-2 focus:outline-none focus:ring-1 focus:ring-red-500 bg-white"
+                              className="w-full px-2 py-1 text-xs border border-gray-300 rounded mb-2 focus:outline-none focus:ring-1 focus:ring-red-500 bg-white text-black"
+                              style={{ color: '#000000' }}
                               title="Change table type if auto-detection was incorrect"
                             >
                               {availableTables.map(table => (
-                                <option key={table} value={table}>{table}</option>
+                                <option key={table} value={table} style={{ color: '#000000' }}>{table}</option>
                               ))}
                             </select>
                             
@@ -1464,22 +1427,54 @@ ${aiModifiers.additionalInstructions}` : ''}`;
               <Calendar className="inline-block mr-2" />
               Analysis Time Range
             </h2>
-            <select
-              value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900 bg-white hover:border-red-400 transition-colors"
-            >
-              <option value="7">Last 7 days</option>
-              <option value="14">Last 14 days</option>
-              <option value="30">Last 30 days</option>
-              <option value="60">Last 60 days</option>
-              <option value="90">Last 90 days</option>
-            </select>
+            <div className="space-y-4">
+              <select
+                value={timeRange}
+                onChange={(e) => setTimeRange(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900 bg-white hover:border-red-400 transition-colors w-full"
+                style={{ color: '#000000' }}
+              >
+                <option value="Last 30 days" style={{ color: '#000000' }}>Last 30 days</option>
+                <option value="Last 60 days" style={{ color: '#000000' }}>Last 60 days</option>
+                <option value="Last 90 days" style={{ color: '#000000' }}>Last 90 days</option>
+                <option value="Last 120 days" style={{ color: '#000000' }}>Last 120 days</option>
+                <option value="Last 150 days" style={{ color: '#000000' }}>Last 150 days</option>
+                <option value="Last 180 days" style={{ color: '#000000' }}>Last 180 days</option>
+                <option value="Last Month" style={{ color: '#000000' }}>Last Month</option>
+                <option value="This Month" style={{ color: '#000000' }}>This Month</option>
+                <option value="Custom" style={{ color: '#000000' }}>Custom</option>
+              </select>
+              
+              {timeRange === 'Custom' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-900 mb-2">Start Date</label>
+                    <input
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900 bg-white"
+                      style={{ color: '#000000' }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-900 mb-2">End Date</label>
+                    <input
+                      type="date"
+                      value={customEndDate}
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900 bg-white"
+                      style={{ color: '#000000' }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
         {/* Generate Analysis Button */}
-        {jsonData && companyInfo && (
+        {jsonData && (
           <div className="mb-8 text-center">
             <button
               onClick={handleReanalyzeClick}
@@ -1726,9 +1721,10 @@ const ModifierSettingsPage: React.FC<ModifierSettingsPageProps> = ({
               value={selectedTactic}
               onChange={(e) => setSelectedTactic(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 appearance-none text-gray-900 bg-white hover:border-red-400 transition-colors"
+              style={{ color: '#000000' }}
             >
               {detectedTactics.map(tactic => (
-                <option key={tactic} value={tactic}>{tactic}</option>
+                <option key={tactic} value={tactic} style={{ color: '#000000' }}>{tactic}</option>
               ))}
             </select>
             <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -1781,6 +1777,7 @@ const ModifierSettingsPage: React.FC<ModifierSettingsPageProps> = ({
                             value={data.ctr || 0}
                             onChange={(e) => handleModifierChange('performancePatterns', 'seasonal', quarter, 'ctr', e.target.value)}
                             className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900 bg-white"
+                            style={{ color: '#000000' }}
                           />
                         </td>
                         <td className="px-4 py-3">
@@ -1790,6 +1787,7 @@ const ModifierSettingsPage: React.FC<ModifierSettingsPageProps> = ({
                             value={selectedTactic === 'TrueView' ? (data.cpv || 0) : (data.cpm || 0)}
                             onChange={(e) => handleModifierChange('performancePatterns', 'seasonal', quarter, selectedTactic === 'TrueView' ? 'cpv' : 'cpm', e.target.value)}
                             className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900 bg-white"
+                            style={{ color: '#000000' }}
                           />
                         </td>
                         <td className="px-4 py-3">
@@ -1799,6 +1797,7 @@ const ModifierSettingsPage: React.FC<ModifierSettingsPageProps> = ({
                             value={selectedTactic === 'TrueView' ? (data.viewRate || 0) : (data.cpc || 0)}
                             onChange={(e) => handleModifierChange('performancePatterns', 'seasonal', quarter, selectedTactic === 'TrueView' ? 'viewRate' : 'cpc', e.target.value)}
                             className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900 bg-white"
+                            style={{ color: '#000000' }}
                           />
                         </td>
                       </tr>
@@ -1838,6 +1837,7 @@ const ModifierSettingsPage: React.FC<ModifierSettingsPageProps> = ({
                             value={data.ctr || 0}
                             onChange={(e) => handleModifierChange('geographicBaselines', 'regions', region, 'ctr', e.target.value)}
                             className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900 bg-white"
+                            style={{ color: '#000000' }}
                           />
                         </td>
                         <td className="px-4 py-3">
@@ -1847,6 +1847,7 @@ const ModifierSettingsPage: React.FC<ModifierSettingsPageProps> = ({
                             value={selectedTactic === 'TrueView' ? (data.cpv || 0) : (data.cpc || 0)}
                             onChange={(e) => handleModifierChange('geographicBaselines', 'regions', region, selectedTactic === 'TrueView' ? 'cpv' : 'cpc', e.target.value)}
                             className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900 bg-white"
+                            style={{ color: '#000000' }}
                           />
                         </td>
                         <td className="px-4 py-3">
@@ -1856,6 +1857,7 @@ const ModifierSettingsPage: React.FC<ModifierSettingsPageProps> = ({
                             value={selectedTactic === 'TrueView' ? (data.viewRate || 0) : (data.cvr || 0)}
                             onChange={(e) => handleModifierChange('geographicBaselines', 'regions', region, selectedTactic === 'TrueView' ? 'viewRate' : 'cvr', e.target.value)}
                             className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900 bg-white"
+                            style={{ color: '#000000' }}
                           />
                         </td>
                       </tr>
@@ -1921,12 +1923,13 @@ const ModifierSettingsPage: React.FC<ModifierSettingsPageProps> = ({
                   setHasAiChanges(true);
                 }}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900 bg-white"
+                style={{ color: '#000000' }}
               >
-                <option value="Concise">Concise</option>
-                <option value="Professional">Professional</option>
-                <option value="Conversational">Conversational</option>
-                <option value="Encouraging">Encouraging</option>
-                <option value="Casual">Casual</option>
+                <option value="Concise" style={{ color: '#000000' }}>Concise</option>
+                <option value="Professional" style={{ color: '#000000' }}>Professional</option>
+                <option value="Conversational" style={{ color: '#000000' }}>Conversational</option>
+                <option value="Encouraging" style={{ color: '#000000' }}>Encouraging</option>
+                <option value="Casual" style={{ color: '#000000' }}>Casual</option>
               </select>
             </div>
             
