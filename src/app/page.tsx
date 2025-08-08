@@ -303,7 +303,8 @@ const CampaignPerformanceAnalyzer = () => {
     }
     
     // Analyze campaign timing
-    analyzeCampaignTiming(data);
+    const timing = analyzeCampaignTiming(data);
+    setCampaignTiming(timing);
     
     // Return tactics that have available tables
     return Array.from(tactics).filter(tactic => getTablesForTactic(tactic).length > 0);
@@ -373,7 +374,6 @@ const CampaignPerformanceAnalyzer = () => {
     const daysInMonth = new Date(now.getFullYear(), currentMonth + 1, 0).getDate();
     timing.isPartialPeriod = currentDate < daysInMonth - 5; // Consider partial if not within last 5 days of month
 
-    setCampaignTiming(timing);
     return timing;
   };
 
