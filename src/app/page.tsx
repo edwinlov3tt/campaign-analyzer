@@ -3,7 +3,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
-import { Upload, FileText, Loader2, Calendar, BarChart3, TrendingUp, Target, Copy, CheckCircle, Settings, Save, ChevronDown, Info, ArrowLeft } from 'lucide-react';
+import { Upload, FileText, Loader2, Calendar, BarChart3, TrendingUp, Target, Copy, CheckCircle, Settings, Save, ChevronDown, Info, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { TACTIC_TABLES, getTablesForTactic } from '@/data/tacticTables';
+import { mapTacticToProduct, normalizeTacticName, tacticCategories } from '@/data/tacticCategories';
 
 // TypeScript interfaces
 interface TacticData {
@@ -56,112 +58,25 @@ interface ModifierData {
   };
 }
 
+interface AIModifiers {
+  temperature: number;
+  tone: 'Concise' | 'Professional' | 'Conversational' | 'Encouraging' | 'Casual';
+  additionalInstructions: string;
+  hideChartsAndTables: boolean;
+}
+
+interface CampaignTiming {
+  campaignStart: Date | null;
+  campaignEnd: Date | null;
+  reportGenerationTime: Date;
+  status: 'not_started' | 'ongoing' | 'completed';
+  isPartialPeriod: boolean;
+  daysRemaining?: number;
+  daysElapsed?: number;
+}
+
 // Environment variable for API key
 const ANTHROPIC_API_KEY = process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY;
-
-// Tactic to available tables mapping
-const TACTIC_TABLES: Record<string, string[]> = {
-  'Targeted Display': [
-    'Monthly Performance',
-    'Campaign Performance', 
-    'Tactic Performance',
-    'Creative Performance',
-    'Creative By Name',
-    'Creative By Size',
-    'Creative Previews',
-    'Performance by City',
-    'Performance by Zip',
-    'Device Performance',
-    'Tracked Pixel Events by Day'
-  ],
-  'TrueView': [
-    'Monthly Performance',
-    'Campaign Performance',
-    'Creative Performance',
-    'Performance by DMA',
-    'Performance by City',
-    'Device Performance',
-    'Placement Performance'
-  ],
-  'AAT': [
-    'Monthly Performance',
-    'Campaign Performance',
-    'Tactic Performance',
-    'Creative Performance',
-    'Performance by City',
-    'Performance by Zip',
-    'Device Performance'
-  ],
-  'RTG': [
-    'Monthly Performance',
-    'Campaign Performance', 
-    'Tactic Performance',
-    'Creative Performance',
-    'Performance by City',
-    'Performance by Zip',
-    'Device Performance'
-  ],
-  'Meta': [
-    'Monthly Performance',
-    'Performance by Platform',
-    'Campaign Performance',
-    'Ad Set Performance',
-    'Facebook Ads Performance',
-    'Instagram Ads Performance',
-    'Conversion Events Total',
-    'Conversion Events by Campaign',
-    'Conversion Events by Creative',
-    'Performance by Gender Clicks',
-    'Region Performance',
-    'DMA Performance',
-    'Post Interactions by Campaign'
-  ],
-  'Geofencing': [
-    'Monthly Performance',
-    'Campaign Type',
-    'Campaign Performance',
-    'Tactic Performance',
-    'Creative/Ad Performance',
-    'Creative By Size',
-    'Creative Previews',
-    'Device Performance',
-    'Performance by City',
-    'Performance by Zip',
-    'Conversion Zone Performance',
-    'Target Fence Performance'
-  ],
-  'SEM': [
-    'Monthly Performance',
-    'Campaign Performance',
-    'Client Performance',
-    'Ad Group Performance',
-    'Top 10 Keywords (Impressions)',
-    'Top 10 Keywords (Clicks)',
-    'Top 10 Keywords (Conversions)',
-    'Overall Keyword Performance',
-    'Device Performance',
-    'Performance by City',
-    'Performance by Zip'
-  ],
-  'Streaming TV': [
-    'Monthly Performance',
-    'Campaign Performance',
-    'Tactic Performance',
-    'Creative Performance',
-    'Performance by City',
-    'Performance by Zip',
-    'Publisher Performance'
-  ],
-  'YouTube': [
-    'Monthly Performance',
-    'Campaign Performance',
-    'Creative Performance',
-    'Performance by DMA',
-    'Performance by City',
-    'Device Performance',
-    'Placement Performance'
-  ]
-};
 
 // Default modifier settings
 const DEFAULT_MODIFIERS: ModifierData = {
@@ -337,19 +252,35 @@ const CampaignPerformanceAnalyzer = () => {
 
   const extractTacticsFromJSON = (data: Record<string, unknown>) => {
     const tactics = new Set<string>();
+    const productMappings = new Map<string, { product: string; subProducts: string[] }>();
     
     if (data.lineItems && Array.isArray(data.lineItems)) {
       data.lineItems.forEach((item: Record<string, unknown>) => {
         // Add products
         if (item.product && typeof item.product === 'string') {
-          tactics.add(item.product);
+          const normalizedTactic = normalizeTacticName(item.product);
+          tactics.add(normalizedTactic);
+          
+          // Map to product/subproduct using tactic categories
+          const mapping = mapTacticToProduct(normalizedTactic);
+          if (mapping) {
+            productMappings.set(normalizedTactic, mapping);
+          }
         }
         
         // Add sub-products
         if (item.subProduct) {
           const subProducts = Array.isArray(item.subProduct) ? item.subProduct : [item.subProduct];
           subProducts.forEach(sub => {
-            if (typeof sub === 'string') tactics.add(sub);
+            if (typeof sub === 'string') {
+              const normalizedSub = normalizeTacticName(sub);
+              tactics.add(normalizedSub);
+              
+              const mapping = mapTacticToProduct(normalizedSub);
+              if (mapping) {
+                productMappings.set(normalizedSub, mapping);
+              }
+            }
           });
         }
         
@@ -357,13 +288,25 @@ const CampaignPerformanceAnalyzer = () => {
         if (item.tacticTypeSpecial) {
           const tacticTypes = Array.isArray(item.tacticTypeSpecial) ? item.tacticTypeSpecial : [item.tacticTypeSpecial];
           tacticTypes.forEach(tactic => {
-            if (typeof tactic === 'string') tactics.add(tactic);
+            if (typeof tactic === 'string') {
+              const normalizedTactic = normalizeTacticName(tactic);
+              tactics.add(normalizedTactic);
+              
+              const mapping = mapTacticToProduct(normalizedTactic);
+              if (mapping) {
+                productMappings.set(normalizedTactic, mapping);
+              }
+            }
           });
         }
       });
     }
     
-    return Array.from(tactics).filter(tactic => TACTIC_TABLES[tactic]);
+    // Analyze campaign timing
+    analyzeCampaignTiming(data);
+    
+    // Return tactics that have available tables
+    return Array.from(tactics).filter(tactic => getTablesForTactic(tactic).length > 0);
   };
 
   const extractOrderNumberFromLuminaLink = (link: string): string | null => {
@@ -381,6 +324,56 @@ const CampaignPerformanceAnalyzer = () => {
     } catch {
       return null;
     }
+  };
+
+  // Helper function to analyze campaign timing
+  const analyzeCampaignTiming = (campaignData: any) => {
+    const now = new Date();
+    let timing: CampaignTiming = {
+      campaignStart: null,
+      campaignEnd: null,
+      reportGenerationTime: now,
+      status: 'ongoing',
+      isPartialPeriod: false
+    };
+
+    // Try to extract dates from campaign data
+    if (campaignData.startDate) {
+      timing.campaignStart = new Date(campaignData.startDate);
+    }
+    if (campaignData.endDate) {
+      timing.campaignEnd = new Date(campaignData.endDate);
+    }
+    
+    // Also check flightDates if available
+    if (!timing.campaignStart && campaignData.flightDates?.startDate) {
+      timing.campaignStart = new Date(campaignData.flightDates.startDate);
+    }
+    if (!timing.campaignEnd && campaignData.flightDates?.endDate) {
+      timing.campaignEnd = new Date(campaignData.flightDates.endDate);
+    }
+
+    // Determine campaign status
+    if (timing.campaignStart && timing.campaignEnd) {
+      if (now < timing.campaignStart) {
+        timing.status = 'not_started';
+      } else if (now > timing.campaignEnd) {
+        timing.status = 'completed';
+      } else {
+        timing.status = 'ongoing';
+        timing.daysElapsed = Math.floor((now.getTime() - timing.campaignStart.getTime()) / (1000 * 60 * 60 * 24));
+        timing.daysRemaining = Math.floor((timing.campaignEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      }
+    }
+
+    // Check if reporting period is partial
+    const currentMonth = now.getMonth();
+    const currentDate = now.getDate();
+    const daysInMonth = new Date(now.getFullYear(), currentMonth + 1, 0).getDate();
+    timing.isPartialPeriod = currentDate < daysInMonth - 5; // Consider partial if not within last 5 days of month
+
+    setCampaignTiming(timing);
+    return timing;
   };
 
   const handleLuminaLinkSubmit = async () => {
@@ -583,6 +576,20 @@ When analyzing performance data, compare against these benchmarks rather than ge
 Highlight when performance is above or below these customized benchmarks and provide insights based on these specific thresholds.`;
       }
 
+      // Build campaign timing context
+      let timingContext = '';
+      if (campaignTiming.campaignStart && campaignTiming.campaignEnd) {
+        timingContext = `
+CAMPAIGN TIMING INFORMATION:
+- Campaign Start: ${campaignTiming.campaignStart.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+- Campaign End: ${campaignTiming.campaignEnd.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+- Report Generation: ${campaignTiming.reportGenerationTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at ${campaignTiming.reportGenerationTime.toLocaleTimeString('en-US')}
+- Campaign Status: ${campaignTiming.status}${campaignTiming.status === 'ongoing' ? ` (${campaignTiming.daysElapsed} days elapsed, ${campaignTiming.daysRemaining} days remaining)` : ''}
+- Reporting Period: ${campaignTiming.isPartialPeriod ? 'PARTIAL (mid-month/quarter)' : 'Complete'}
+
+${campaignTiming.isPartialPeriod ? 'Note: This is a partial reporting period. Some metrics may appear lower than expected due to incomplete data for the current month/quarter.' : ''}`;
+      }
+
       const currentDate = new Date();
       const dateContext = `
 CURRENT DATE & TIME CONTEXT:
@@ -594,8 +601,29 @@ Today is ${currentDate.toLocaleDateString('en-US', {
 })} at ${currentDate.toLocaleTimeString('en-US')} (${currentDate.getFullYear()}).
 Current month: ${currentDate.toLocaleDateString('en-US', { month: 'long' })} ${currentDate.getFullYear()}
 Current quarter: Q${Math.floor((currentDate.getMonth() + 3) / 3)} ${currentDate.getFullYear()}
+${timingContext}
 
 Use this context when analyzing performance trends and seasonal patterns. If you notice performance changes in recent months, consider whether we are currently in that time period when making recommendations.`;
+
+      // Build AI modifiers context
+      let aiModifierContext = '';
+      if (aiModifiers) {
+        aiModifierContext = `
+AI RESPONSE MODIFIERS:
+- Temperature: ${aiModifiers.temperature} (${aiModifiers.temperature < 0.3 ? 'Very focused/deterministic' : aiModifiers.temperature < 0.7 ? 'Balanced' : 'Creative/varied'})
+- Tone: ${aiModifiers.tone}
+- Additional Instructions: ${aiModifiers.additionalInstructions || 'None'}
+- Charts/Tables: ${aiModifiers.hideChartsAndTables ? 'HIDE (text analysis only)' : 'Include visualizations'}`;
+      }
+
+      // Build tactic mapping context
+      const tacticMappingContext = `
+TACTIC PRODUCT MAPPING:
+For each detected tactic, map to the correct Product and Subproduct categories:
+${detectedTactics.map(tactic => {
+  const mapping = mapTacticToProduct(tactic);
+  return mapping ? `- ${tactic} → Product: ${mapping.product}, Subproducts: ${mapping.subProducts.join(', ')}` : `- ${tactic} → [No mapping found]`;
+}).join('\n')}`;
 
       const prompt = `As a digital marketing analyst, analyze this campaign performance data and provide a comprehensive report.
 ${dateContext}
@@ -611,55 +639,60 @@ ${JSON.stringify(tacticData, null, 2)}
 
 TIME RANGE: Last ${timeRange} days
 ${modifierContext}
+${aiModifierContext}
+${tacticMappingContext}
 
-Based on the uploaded performance tables${modifierSettings ? ' and custom benchmark modifiers' : ''}, provide detailed analysis including:
+Based on the uploaded performance tables${modifierSettings ? ' and custom benchmark modifiers' : ''}, provide detailed analysis using this EXACT 5-point structure:
 
-1. EXECUTIVE SUMMARY
-   - Overall campaign performance overview with key metrics
-   - Budget utilization and efficiency summary
-   - Major achievements and challenges identified
-   ${modifierSettings ? '- Performance comparison against custom benchmarks' : ''}
+1. HIGH-LEVEL PERFORMANCE STORY
+   - Connect performance to campaign goals (awareness, engagement, conversion)
+   - Highlight how campaign timing affects current delivery${campaignTiming.isPartialPeriod ? ' (PARTIAL PERIOD WARNING)' : ''}
+   - Present single-value averages for key metrics (not ranges)
+   - Include Product and Subproduct mapping for each tactic
+   ${modifierSettings ? '- Compare against your custom benchmarks' : ''}
 
-2. PERFORMANCE ANALYSIS BY TACTIC
-   - Detailed breakdown for each tactic with uploaded data
-   - CTR, conversion rates, and engagement metrics analysis${modifierSettings ? ' compared to your custom benchmarks' : ''}
-   - Geographic performance insights (city/zip level where available)
-   - Device performance breakdown
-   - Creative performance comparisons where applicable
-   ${modifierSettings ? '- Seasonal and monthly performance patterns analysis using your modifiers' : ''}
+2. FUNNEL-STAGE EVALUATION
+   - Analyze what each tactic is optimized to achieve
+   - Map tactics to funnel stages (awareness → consideration → conversion)
+   - Evaluate performance based on intended funnel position
+   - Single average values only (e.g., "1.46% CTR avg" not "0.97-1.95% CTR")
 
-3. TREND ANALYSIS
-   - Performance trends over the specified time period
-   - Seasonal patterns or anomalies identified${modifierSettings ? ' based on your custom seasonal modifiers' : ''}
-   - Cross-tactic performance comparisons
-   - Geographic hotspots and underperforming areas
+3. RELATIVE PERFORMANCE ANALYSIS
+   - Compare creatives, audiences, and time periods
+   - Include statistical confidence notes when sample sizes are small
+   - Day-over-day, week-over-week, month-over-month comparisons
+   - Geographic and demographic performance variations
+   ${modifierSettings ? '- Benchmark against your custom seasonal/regional modifiers' : ''}
 
-4. OPTIMIZATION RECOMMENDATIONS
-   Focus on actionable insights based on the data${modifierSettings ? ' and custom benchmarks' : ''}:
-   - Geographic targeting adjustments (expand successful areas, investigate underperforming regions)
-   - Demographic targeting refinements based on performance data
-   - Creative messaging optimization based on performance variations${modifierSettings ? ' and creative indicator benchmarks' : ''}
-   - Audience segmentation opportunities
-   - Tracking and measurement improvements
-   - Content strategy adjustments based on engagement patterns
-   
-   DO NOT include technical bidding strategies, budget allocation suggestions, or platform-specific optimizations.
+4. SPECIFIC ACTIONABLE IMPROVEMENTS
+   - Frame underperformance as opportunities ("here's how we'll improve")
+   - Provide concrete tests or changes to implement
+   - Focus on targeting, messaging, and measurement optimizations
+   - Call out small sample sizes explicitly
+   - Keep language constructive and solution-oriented
 
-5. DATA VISUALIZATIONS
-   Create 4-6 charts showing key insights from the uploaded tables:
-   - Performance comparisons between tactics${modifierSettings ? ' with benchmark lines' : ''}
-   - Geographic performance heatmaps
-   - Device performance breakdowns
-   - Creative performance rankings
-   - Trend analysis over time
+5. WINS, RISKS, AND PRIORITIZATION
+   - Summarize top performing elements to scale
+   - Identify risks that need immediate attention
+   - Recommend prioritization for next period
+   - Maintain optimistic, encouraging tone
+   - Note any data limitations due to campaign timing
+
+${aiModifiers.hideChartsAndTables ? 'IMPORTANT: User has requested NO CHARTS OR TABLES. Provide text analysis only.' : `6. DATA VISUALIZATIONS
+   Create 4-6 charts showing key insights:
+   - Tactic performance with Product/Subproduct labels
+   - Geographic performance patterns
+   - Device/demographic breakdowns
+   - Trend analysis with timing context
+   - Creative performance rankings`}
 
 Format your response as JSON with this structure:
 {
-  "executiveSummary": "string",
-  "performanceAnalysis": "string", 
-  "trendAnalysis": "string",
-  "recommendations": "string",
-  "visualizations": [
+  "executiveSummary": "string (Section 1: High-Level Performance Story)",
+  "performanceAnalysis": "string (Section 2: Funnel-Stage Evaluation + Section 3: Relative Analysis)", 
+  "trendAnalysis": "string (Section 4: Specific Actionable Improvements)",
+  "recommendations": "string (Section 5: Wins, Risks, and Prioritization)",
+  ${aiModifiers.hideChartsAndTables ? '"visualizations": []' : `"visualizations": [
     {
       "type": "bar_chart|line_chart|pie_chart|area_chart",
       "title": "string",
@@ -669,17 +702,24 @@ Format your response as JSON with this structure:
         "colors": ["#cf0e0f", "#ff4444", "#ff6666", "#ff8888", "#ffaaaa"]
       }
     }
-  ]
+  ]`}
 }
 
-Use the red color palette throughout. Focus on insights that lead to actionable improvements in targeting, messaging, and measurement.${modifierSettings ? ' Leverage the custom benchmark modifiers to provide more precise and relevant recommendations.' : ''}`;
+Use the red color palette throughout. Adopt a ${aiModifiers.tone.toLowerCase()} tone as requested. Focus on insights that lead to actionable improvements in targeting, messaging, and measurement.${modifierSettings ? ' Leverage the custom benchmark modifiers to provide more precise and relevant recommendations.' : ''}
+
+${aiModifiers.additionalInstructions ? `ADDITIONAL USER INSTRUCTIONS:
+${aiModifiers.additionalInstructions}` : ''}`;
 
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ 
+          prompt,
+          temperature: aiModifiers.temperature,
+          maxTokens: 8192
+        }),
       });
 
       if (!response.ok) {
@@ -792,7 +832,7 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
   };
 
   const getUploadedTablesCount = (tactic: string) => {
-    const tacticTables = TACTIC_TABLES[tactic] || [];
+    const tacticTables = getTablesForTactic(tactic);
     return tacticTables.filter(table => tacticUploads[`${tactic}_${table}`]).length;
   };
 
@@ -800,6 +840,7 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
     return <ModifierSettingsPage 
       detectedTactics={detectedTactics} 
       modifierSettings={modifierSettings}
+      aiModifiers={aiModifiers}
       onBack={() => setCurrentView('analyzer')}
       onSave={(modifiers: ModifierData) => {
         if (typeof window !== 'undefined') {
@@ -807,6 +848,12 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
         }
         setModifierSettings(modifiers);
         setCurrentView('analyzer');
+      }}
+      onSaveAiModifiers={(newAiModifiers: AIModifiers) => {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('aiModifiers', JSON.stringify(newAiModifiers));
+        }
+        setAiModifiers(newAiModifiers);
       }}
     />;
   }
@@ -1052,12 +1099,12 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900" style={{color: '#cf0e0f'}}>{tactic}</h3>
                   <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-sm font-medium">
-                    {getUploadedTablesCount(tactic)} / {TACTIC_TABLES[tactic]?.length || 0} tables uploaded
+                    {getUploadedTablesCount(tactic)} / {getTablesForTactic(tactic).length} tables uploaded
                   </span>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {(TACTIC_TABLES[tactic] || []).map((tableName) => {
+                  {getTablesForTactic(tactic).map((tableName) => {
                     const uploadKey = `${tactic}_${tableName}`;
                     const isUploaded = tacticUploads[uploadKey];
                     
@@ -1201,12 +1248,34 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
             </div>
 
             {/* Visualizations */}
-            {analysisResult.visualizations && analysisResult.visualizations.length > 0 && (
+            {analysisResult.visualizations && analysisResult.visualizations.length > 0 && showChartsAndTables && (
               <div className="bg-white p-6 rounded-lg shadow-sm">
-                <h2 className="text-2xl font-bold mb-6 text-gray-900" style={{color: '#cf0e0f'}}>Performance Insights & Data Visualizations</h2>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900" style={{color: '#cf0e0f'}}>Performance Insights & Data Visualizations</h2>
+                  <button
+                    onClick={() => setShowChartsAndTables(false)}
+                    className="text-gray-500 hover:text-gray-700 flex items-center text-sm"
+                  >
+                    <EyeOff className="w-4 h-4 mr-1" />
+                    Hide Charts
+                  </button>
+                </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   {analysisResult.visualizations.map((viz, index) => renderVisualization(viz, index))}
                 </div>
+              </div>
+            )}
+            
+            {/* Show Charts Button */}
+            {analysisResult.visualizations && analysisResult.visualizations.length > 0 && !showChartsAndTables && (
+              <div className="bg-white p-4 rounded-lg shadow-sm">
+                <button
+                  onClick={() => setShowChartsAndTables(true)}
+                  className="text-gray-700 hover:text-gray-900 flex items-center mx-auto"
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  Show Charts & Tables
+                </button>
               </div>
             )}
 
@@ -1216,6 +1285,18 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
               <div className="prose max-w-none">
                 <p className="text-gray-900 leading-relaxed whitespace-pre-line">{analysisResult.recommendations}</p>
               </div>
+            </div>
+            
+            {/* Changelog Note */}
+            <div className="bg-gray-50 p-4 rounded-lg shadow-sm">
+              <p className="text-xs text-gray-600">
+                Report generated: {new Date().toLocaleString()} | 
+                Tactic mappings: Enhanced categories v2 | 
+                Report structure: 5-point analysis framework |
+                Temperature: {aiModifiers.temperature} | 
+                Tone: {aiModifiers.tone}
+                {campaignTiming.isPartialPeriod && ' | ⚠️ Partial period data'}
+              </p>
             </div>
           </div>
         )}
@@ -1228,23 +1309,34 @@ Use the red color palette throughout. Focus on insights that lead to actionable 
 interface ModifierSettingsPageProps {
   detectedTactics: string[];
   modifierSettings: ModifierData | null;
+  aiModifiers: AIModifiers;
   onBack: () => void;
   onSave: (modifiers: ModifierData) => void;
+  onSaveAiModifiers: (aiModifiers: AIModifiers) => void;
 }
 
 const ModifierSettingsPage: React.FC<ModifierSettingsPageProps> = ({ 
   detectedTactics, 
-  modifierSettings, 
+  modifierSettings,
+  aiModifiers, 
   onBack, 
-  onSave 
+  onSave,
+  onSaveAiModifiers 
 }) => {
   const [modifiers, setModifiers] = useState<ModifierData>(modifierSettings || DEFAULT_MODIFIERS);
   const [selectedTactic, setSelectedTactic] = useState(detectedTactics[0] || 'Targeted Display');
   const [hasChanges, setHasChanges] = useState(false);
+  const [localAiModifiers, setLocalAiModifiers] = useState<AIModifiers>(aiModifiers);
+  const [hasAiChanges, setHasAiChanges] = useState(false);
 
   const handleSave = () => {
     onSave(modifiers);
     setHasChanges(false);
+  };
+  
+  const handleSaveAi = () => {
+    onSaveAiModifiers(localAiModifiers);
+    setHasAiChanges(false);
   };
 
   const handleModifierChange = (section: string, subSection: string, key: string, metric: string, value: string) => {
@@ -1450,6 +1542,106 @@ const ModifierSettingsPage: React.FC<ModifierSettingsPageProps> = ({
               </div>
             </div>
           )}
+        </div>
+        
+        {/* AI Modifiers Section */}
+        <div className="bg-white p-6 rounded-lg shadow-sm mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900" style={{color: '#cf0e0f'}}>AI Analysis Modifiers</h3>
+            <button
+              onClick={handleSaveAi}
+              disabled={!hasAiChanges}
+              className="px-4 py-2 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center transition-colors font-medium"
+              style={{backgroundColor: hasAiChanges ? '#cf0e0f' : undefined}}
+            >
+              <Save className="w-4 h-4 mr-2" />
+              Save AI Settings
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Temperature Control */}
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">
+                Temperature (Creativity Level)
+              </label>
+              <div className="space-y-2">
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={localAiModifiers.temperature}
+                  onChange={(e) => {
+                    setLocalAiModifiers(prev => ({ ...prev, temperature: parseFloat(e.target.value) }));
+                    setHasAiChanges(true);
+                  }}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-gray-600">
+                  <span>Focused (0.0)</span>
+                  <span className="font-medium text-gray-900">{localAiModifiers.temperature}</span>
+                  <span>Creative (1.0)</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Tone Selector */}
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">
+                Response Tone
+              </label>
+              <select
+                value={localAiModifiers.tone}
+                onChange={(e) => {
+                  setLocalAiModifiers(prev => ({ ...prev, tone: e.target.value as AIModifiers['tone'] }));
+                  setHasAiChanges(true);
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900 bg-white"
+              >
+                <option value="Concise">Concise</option>
+                <option value="Professional">Professional</option>
+                <option value="Conversational">Conversational</option>
+                <option value="Encouraging">Encouraging</option>
+                <option value="Casual">Casual</option>
+              </select>
+            </div>
+            
+            {/* Additional Instructions */}
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-900 mb-2">
+                Additional Instructions (Optional)
+              </label>
+              <textarea
+                value={localAiModifiers.additionalInstructions}
+                onChange={(e) => {
+                  setLocalAiModifiers(prev => ({ ...prev, additionalInstructions: e.target.value }));
+                  setHasAiChanges(true);
+                }}
+                placeholder="Enter any specific instructions for the AI analysis..."
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900 bg-white"
+                rows={3}
+              />
+            </div>
+            
+            {/* Hide Charts Toggle */}
+            <div className="md:col-span-2">
+              <label className="flex items-center space-x-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={localAiModifiers.hideChartsAndTables}
+                  onChange={(e) => {
+                    setLocalAiModifiers(prev => ({ ...prev, hideChartsAndTables: e.target.checked }));
+                    setHasAiChanges(true);
+                  }}
+                  className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                />
+                <span className="text-sm font-medium text-gray-900">
+                  Hide charts and tables in analysis (text-only report)
+                </span>
+              </label>
+            </div>
+          </div>
         </div>
       </div>
     </div>

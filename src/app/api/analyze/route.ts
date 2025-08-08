@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { prompt } = body;
+    const { prompt, temperature = 0.7, maxTokens = 8192 } = body;
 
     // Try both environment variable names
     const ANTHROPIC_API_KEY = process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
@@ -22,6 +22,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate temperature parameter
+    const validTemperature = Math.max(0, Math.min(1, Number(temperature) || 0.7));
+
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -31,7 +34,8 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         model: "claude-3-5-sonnet-20241022",
-        max_tokens: 8192,
+        max_tokens: maxTokens,
+        temperature: validTemperature,
         messages: [
           { 
             role: "user", 

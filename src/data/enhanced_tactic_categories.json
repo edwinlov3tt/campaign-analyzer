@@ -1,0 +1,619 @@
+{
+  "platforms": {
+    "Meta": ["Facebook", "Instagram"],
+    "Google": ["YouTube", "YouTube TV", "Google Ads", "TrueView"],
+    "Blended Tactics": ["Xandr", "The Trade Desk"],
+    "Addressable Solutions": ["Sifi", "MadHive", "Simpli.fi"],
+    "Email Marketing": ["LeadMe", "ADS", "Site Impact", "Bridge"],
+    "Social Platforms": ["Snapchat", "TikTok", "Twitter", "Pinterest", "LinkedIn"],
+    "Local Display": ["LocalX", "Ignite Network"],
+    "Streaming TV": ["Hulu", "YouTube TV", "Netflix"],
+    "Search": ["Google Ads", "SEM"],
+    "Programmatic": ["Xandr", "The Trade Desk", "Sifi", "MadHive"]
+  },
+  "tactics": {
+    "emailMarketing": {
+      "platform": ["LeadMe", "ADS", "Site Impact", "Bridge"],
+      "category": "Email Marketing",
+      "product": "Email Marketing",
+      "subProducts": {
+        "1:1 Marketing": {
+          "subProductAliasCode": "1:1 Marketing",
+          "medium": "Email",
+          "kpi": ["CPM"],
+          "dataValue": "emailMarketing"
+        },
+        "B2B (Business Targeting)": {
+          "subProductAliasCode": "B2B",
+          "medium": "Email",
+          "kpi": ["CPM"],
+          "dataValue": "emailMarketing"
+        },
+        "B2C (Consumer Targeting)": {
+          "subProductAliasCode": "B2C",
+          "medium": "Email",
+          "kpi": ["CPM"],
+          "dataValue": "emailMarketing"
+        }
+      }
+    },
+    "beta": {
+      "platform": ["Various"],
+      "category": "Beta",
+      "product": "Beta",
+      "subProducts": {
+        "Premium Plus": {
+          "subProductAliasCode": "Premium Plus - RON, Premium Plus - AAT",
+          "medium": "Video",
+          "kpi": ["CPM"],
+          "dataValue": "beta"
+        },
+        "Nextdoor": {
+          "subProductAliasCode": "Nextdoor - Reach/Awareness, Nextdoor - Traffic",
+          "medium": "Single Image, Carousel, Slideshow, or Video",
+          "kpi": ["CPM"],
+          "dataValue": "beta"
+        },
+        "Netflix": {
+          "subProductAliasCode": "Netflix - RON, Netflix - Genre",
+          "medium": "Video",
+          "kpi": ["CPM"],
+          "dataValue": "beta"
+        },
+        "Demand Gen": {
+          "subProductAliasCode": "SEM - Demand Gen",
+          "medium": "Text, Video, Email, Display, Maps",
+          "kpi": ["CPM"],
+          "dataValue": "beta"
+        }
+      }
+    },
+    "programmaticAudio": {
+      "platform": ["The Trade Desk"],
+      "category": "Programmatic",
+      "product": "Programmatic Audio",
+      "subProducts": {
+        "Advanced Audience Targeting": {
+          "subProductAliasCode": "AAT",
+          "medium": "Audio",
+          "kpi": ["CPM"],
+          "dataValue": "programmaticAudio"
+        },
+        "Run of Network": {
+          "subProductAliasCode": "RON",
+          "medium": "Audio",
+          "kpi": ["CPM"],
+          "dataValue": "programmaticAudio"
+        }
+      }
+    },
+    "addressableSolutions": {
+      "platform": ["Sifi", "MadHive", "Simpli.fi"],
+      "category": "Programmatic",
+      "product": "Addressable Solutions",
+      "subProducts": {
+        "Addressable Display": {
+          "subProductAliasCode": "AGF-DISP",
+          "medium": "Display",
+          "kpi": ["CPM", "Conversions"],
+          "dataValue": "addressableDisplay"
+        },
+        "Geofencing with Foot Traffic": {
+          "subProductAliasCode": "GFT",
+          "medium": "Display",
+          "kpi": ["CPM", "Conversions"],
+          "dataValue": "geofence"
+        },
+        "Addressable STV": {
+          "subProductAliasCode": "Addressable STV",
+          "medium": "Video",
+          "kpi": ["CPM"],
+          "dataValue": "addressableStv"
+        },
+        "Addressable Video": {
+          "subProductAliasCode": "Addressable Video",
+          "medium": "Video",
+          "kpi": ["CPM"],
+          "dataValue": "addressableVideo"
+        }
+      }
+    },
+    "blendedTactics": {
+      "platform": ["Xandr", "The Trade Desk"],
+      "category": "Programmatic",
+      "product": "Blended Tactics",
+      "subProducts": {
+        "Targeted Display": {
+          "subProductAliasCode": "DISP",
+          "medium": "Display",
+          "kpi": ["CPM", "Conversions"],
+          "dataValue": "targetedDisplay",
+          "targetingOptions": ["RON", "AAT", "WTG", "KWD", "GEO", "RTG", "CRM"]
+        },
+        "Social Display": {
+          "subProductAliasCode": "Social Display",
+          "medium": "Display",
+          "kpi": ["CPM"],
+          "dataValue": "socialDisplay",
+          "targetingOptions": ["RON", "AAT", "WTG", "KWD", "GEO", "RTG", "CRM"]
+        },
+        "Targeted Native": {
+          "subProductAliasCode": "Targeted Native",
+          "medium": "Native",
+          "kpi": ["CPM"],
+          "dataValue": "targetedNative",
+          "targetingOptions": ["RON", "AAT", "WTG", "KWD", "GEO", "RTG", "CRM"]
+        },
+        "Targeted Video": {
+          "subProductAliasCode": "Targeted Video",
+          "medium": "Video",
+          "kpi": ["CPM"],
+          "dataValue": "targetedVideo",
+          "targetingOptions": ["RON", "AAT", "WTG", "KWD", "GEO", "RTG", "CRM"]
+        }
+      }
+    },
+    "stv": {
+      "platform": ["Hulu", "YouTube TV", "Various"],
+      "category": ["Programmatic", "Locality Live Sports"],
+      "product": "STV",
+      "subProducts": {
+        "Video": {
+          "subProductAliasCode": "Video",
+          "medium": "Video",
+          "kpi": ["CPM"],
+          "dataValue": "locality"
+        },
+        "Advanced Audience Targeting OTT": {
+          "subProductAliasCode": "Advanced Audience Targeting OTT",
+          "medium": "Video",
+          "kpi": ["CPM"],
+          "dataValue": "streamingStv"
+        },
+        "Channel Targeted OTT": {
+          "subProductAliasCode": "Channel Targeted OTT",
+          "medium": "Video",
+          "kpi": ["CPM"],
+          "dataValue": "streamingStv"
+        },
+        "Streaming TV OTT": {
+          "subProductAliasCode": "Streaming TV OTT",
+          "medium": "Video",
+          "kpi": ["CPM"],
+          "dataValue": "streamingStv"
+        },
+        "Run of Network": {
+          "subProductAliasCode": "Run of Network",
+          "medium": "Video",
+          "kpi": ["CPM"],
+          "dataValue": "streamingStv"
+        },
+        "Hulu - Audience Targeted": {
+          "subProductAliasCode": "Hulu - Audience Targeted",
+          "medium": "Video",
+          "kpi": ["CPM"],
+          "dataValue": "streamingStv"
+        },
+        "Hulu - RON": {
+          "subProductAliasCode": "Hulu - RON",
+          "medium": "Video",
+          "kpi": ["CPM"],
+          "dataValue": "streamingStv"
+        },
+        "Polk": {
+          "subProductAliasCode": "Polk",
+          "medium": "Video",
+          "kpi": ["CPM"],
+          "dataValue": "streamingStv"
+        },
+        "YouTube TV - Audience Targeted": {
+          "subProductAliasCode": "YouTube TV - Audience Targeted",
+          "medium": "Video",
+          "kpi": ["CPM"],
+          "dataValue": "youtubeTv"
+        },
+        "YouTube TV - Run of Network": {
+          "subProductAliasCode": "YouTube TV - Run of Network",
+          "medium": "Video",
+          "kpi": ["CPM"],
+          "dataValue": "youtubeTv"
+        }
+      }
+    },
+    "meta": {
+      "platform": ["Facebook", "Meta"],
+      "category": "Social",
+      "product": "Meta",
+      "subProducts": {
+        "Facebook - Link Click": {
+          "subProductAliasCode": "FB - Link Click",
+          "medium": "Social",
+          "kpi": ["CPLC", "CPM"],
+          "dataValue": "meta"
+        },
+        "Facebook - Awareness": {
+          "subProductAliasCode": "FB - Awareness",
+          "medium": "Social",
+          "kpi": ["CPM"],
+          "dataValue": "meta"
+        },
+        "Facebook - ThruPlay": {
+          "subProductAliasCode": "FB - ThruPlay",
+          "medium": "Social",
+          "kpi": ["CPV"],
+          "dataValue": "meta"
+        },
+        "Facebook - Post Engagement": {
+          "subProductAliasCode": "FB - Post Engagement",
+          "medium": "Social",
+          "kpi": ["CPPE"],
+          "dataValue": "meta"
+        },
+        "Facebook - Lead Gen": {
+          "subProductAliasCode": "FB - Lead Gen",
+          "medium": "Social",
+          "kpi": ["CPL"],
+          "dataValue": "meta"
+        },
+        "Link Click": {
+          "subProductAliasCode": "Link Click",
+          "medium": "Social",
+          "kpi": ["CPLC"],
+          "dataValue": "meta"
+        }
+      }
+    },
+    "snapchat": {
+      "platform": ["Snapchat"],
+      "category": "Social",
+      "product": "Snapchat",
+      "subProducts": {
+        "Snapchat - Aware": {
+          "subProductAliasCode": "Snapchat - Aware",
+          "medium": "Social",
+          "kpi": ["CPM"],
+          "dataValue": "snapchat"
+        },
+        "Snapchat - Swipe Up": {
+          "subProductAliasCode": "Snapchat - Swipe Up",
+          "medium": "Social",
+          "kpi": ["CPSU"],
+          "dataValue": "snapchat"
+        }
+      }
+    },
+    "tiktok": {
+      "platform": ["TikTok"],
+      "category": "Social",
+      "product": "TikTok",
+      "subProducts": {
+        "TikTok - Awareness": {
+          "subProductAliasCode": "TikTok - Awareness",
+          "medium": "Social",
+          "kpi": ["CPM"],
+          "dataValue": "tiktok"
+        },
+        "TikTok - Link Click": {
+          "subProductAliasCode": "TikTok - Link Click",
+          "medium": "Social",
+          "kpi": ["CPLC"],
+          "dataValue": "tiktok"
+        }
+      }
+    },
+    "twitter": {
+      "platform": ["Twitter"],
+      "category": "Social",
+      "product": "Twitter",
+      "subProducts": {
+        "Twitter - Link Click": {
+          "subProductAliasCode": "Twitter - Link Click",
+          "medium": "Social",
+          "kpi": ["CPLC"],
+          "dataValue": "-"
+        },
+        "Twitter - Awareness": {
+          "subProductAliasCode": "Twitter - Awareness",
+          "medium": "Social",
+          "kpi": ["CPM"],
+          "dataValue": "-"
+        }
+      }
+    },
+    "pinterest": {
+      "platform": ["Pinterest"],
+      "category": "Social",
+      "product": "Pinterest",
+      "subProducts": {
+        "Pintrest - Link Click": {
+          "subProductAliasCode": "Pinterest - Link Click",
+          "medium": "Social",
+          "kpi": ["CPLC"],
+          "dataValue": "pinterest"
+        },
+        "Pintrest - Awareness": {
+          "subProductAliasCode": "Pinterest - Awareness",
+          "medium": "Social",
+          "kpi": ["CPM"],
+          "dataValue": "pinterest"
+        }
+      }
+    },
+    "linkedin": {
+      "platform": ["LinkedIn"],
+      "category": "Social",
+      "product": "LinkedIn",
+      "subProducts": {
+        "LinkedIn - Link Click": {
+          "subProductAliasCode": "LinkedIn - Link Click",
+          "medium": "Social",
+          "kpi": ["CPLC"],
+          "dataValue": "linkedIn"
+        }
+      }
+    },
+    "sem": {
+      "platform": ["Google Ads"],
+      "category": "Google",
+      "product": "SEM",
+      "subProducts": {
+        "SEM": {
+          "subProductAliasCode": "SEM",
+          "medium": "Search",
+          "kpi": ["Clicks", "Form Submissions", "Phone Calls", "CPC"],
+          "dataValue": "sem"
+        },
+        "Google Search": {
+          "subProductAliasCode": "Google Search",
+          "medium": "Search",
+          "kpi": ["Clicks", "Form Submissions", "Phone Calls", "CPC"],
+          "dataValue": "sem"
+        }
+      }
+    },
+    "spark": {
+      "platform": ["Google"],
+      "category": "Google",
+      "product": "Spark",
+      "subProducts": {
+        "Spark": {
+          "subProductAliasCode": "Spark",
+          "medium": "Search",
+          "kpi": ["CPC"],
+          "dataValue": "spark"
+        }
+      }
+    },
+    "youtube": {
+      "platform": ["YouTube"],
+      "category": "Programmatic",
+      "product": "YouTube",
+      "subProducts": {
+        "YouTube True View": {
+          "subProductAliasCode": "YouTube True View",
+          "medium": "Video",
+          "kpi": ["CPV"],
+          "dataValue": "youtube"
+        },
+        "YouTube Bumper": {
+          "subProductAliasCode": "YouTube Bumper",
+          "medium": "Video",
+          "kpi": ["CPM"],
+          "dataValue": "youtube"
+        }
+      }
+    },
+    "igniteNetwork": {
+      "platform": ["Ignite Network"],
+      "category": "CPM Display",
+      "product": "Ignite Network",
+      "subProducts": {
+        "Ignite Network - Banner Ads": {
+          "subProductAliasCode": "Ignite Network - Banner Ads",
+          "medium": "Display",
+          "kpi": ["CPM"],
+          "dataValue": "cpmDisplay"
+        }
+      }
+    },
+    "ssm": {
+      "platform": ["LocalX"],
+      "category": "Local Social",
+      "product": "SSM",
+      "subProducts": {
+        "Sponsored Social Mentions - Link Click": {
+          "subProductAliasCode": "SSM - Link Click",
+          "medium": "Social",
+          "kpi": ["CPLC"],
+          "dataValue": "socialMention"
+        },
+        "Sponsored Social Mentions - Awareness": {
+          "subProductAliasCode": "SSM - Awareness",
+          "medium": "Social",
+          "kpi": ["CPM"],
+          "dataValue": "socialMention"
+        },
+        "Sponsored Social Mentions - ThruPlay": {
+          "subProductAliasCode": "SSM - ThruPlay",
+          "medium": "Social",
+          "kpi": ["CPV"],
+          "dataValue": "socialMention"
+        }
+      }
+    },
+    "localDisplay": {
+      "platform": ["LocalX"],
+      "category": "Local Display",
+      "product": "CPM Display",
+      "subProducts": {
+        "Banner Ads": {
+          "subProductAliasCode": "Banner Ads",
+          "medium": "Display",
+          "kpi": ["CPM"],
+          "dataValue": "localDisplay"
+        },
+        "Amplifier": {
+          "subProductAliasCode": "Amplifier",
+          "medium": "Display",
+          "kpi": ["CPM"],
+          "dataValue": "localDisplay"
+        },
+        "Ignite Network": {
+          "subProductAliasCode": "Ignite Network",
+          "medium": "Display",
+          "kpi": ["CPM"],
+          "dataValue": "localDisplay"
+        },
+        "Local Network": {
+          "subProductAliasCode": "Local Network",
+          "medium": "Display",
+          "kpi": ["CPM"],
+          "dataValue": "localDisplay"
+        },
+        "Mobile Billboard": {
+          "subProductAliasCode": "Mobile Billboard",
+          "medium": "Display",
+          "kpi": ["CPM"],
+          "dataValue": "localDisplay"
+        }
+      }
+    },
+    "takeovers": {
+      "platform": ["LocalX"],
+      "category": "Local Display",
+      "product": "Takeovers",
+      "subProducts": {
+        "Station Site Takeovers": {
+          "subProductAliasCode": "Station Site Takeovers",
+          "medium": "Display",
+          "kpi": ["CPM"],
+          "dataValue": "localDisplay"
+        }
+      }
+    },
+    "sponsorship": {
+      "platform": ["LocalX"],
+      "category": "Local Display",
+      "product": "Sponsorship",
+      "subProducts": {
+        "Content Sponsorship": {
+          "subProductAliasCode": "Content Sponsorship",
+          "medium": "Sponsorship",
+          "kpi": ["CPM"],
+          "dataValue": "localDisplay"
+        },
+        "Contest Sponsorship": {
+          "subProductAliasCode": "Contest Sponsorship",
+          "medium": "Sponsorship",
+          "kpi": ["CPM"],
+          "dataValue": "localDisplay"
+        },
+        "Listen Live Sponsorship": {
+          "subProductAliasCode": "Listen Live Sponsorship",
+          "medium": "Sponsorship",
+          "kpi": ["CPM"],
+          "dataValue": "localDisplay"
+        },
+        "Station App Sponsorship": {
+          "subProductAliasCode": "Station App Sponsorship",
+          "medium": "Sponsorship",
+          "kpi": ["CPM"],
+          "dataValue": "localDisplay"
+        }
+      }
+    },
+    "digitalEndorsements": {
+      "platform": ["LocalX"],
+      "category": "Local Display",
+      "product": "Digital Endorsements",
+      "subProducts": {
+        "Advertorial": {
+          "subProductAliasCode": "Advertorial",
+          "medium": "Content",
+          "kpi": ["CPM"],
+          "dataValue": "localDisplay"
+        },
+        "Booth": {
+          "subProductAliasCode": "Booth",
+          "medium": "Event",
+          "kpi": ["CPM"],
+          "dataValue": "localDisplay"
+        },
+        "Endorsement": {
+          "subProductAliasCode": "Endorsement",
+          "medium": "Audio",
+          "kpi": ["CPM"],
+          "dataValue": "localDisplay"
+        }
+      }
+    }
+  },
+  "targetingHierarchy": {
+    "RON": {
+      "fullName": "Run of Network",
+      "description": "Will run on both Mobile and Desktop, best for reaching as many people as possible, low conversions"
+    },
+    "AAT": {
+      "fullName": "Advanced Audience Targeting",
+      "description": "Audiences to Target (Ex: Adults 25-54, Households with children etc.)"
+    },
+    "WTG": {
+      "fullName": "Website Targeting",
+      "description": "Use provided website categories (Health, Business, Real Estate etc.)"
+    },
+    "KWD": {
+      "fullName": "Keyword Targeting",
+      "description": "Use keywords for targeting"
+    },
+    "GEO": {
+      "fullName": "Geofencing With Foot Traffic",
+      "description": "Radius for each fence between 1 and 18 miles as a best practice but the minimum is 100 Meters....Lookback Window needs to be added to see devices in the fences in the past (1 month, 3 months, 6 months or 1 year)"
+    },
+    "HLM": {
+      "fullName": "Geofencing With Foot Traffic",
+      "description": "Just another name for Geo-Fencing with foot traffic"
+    },
+    "CRM": {
+      "fullName": "Audience Activation",
+      "description": "Use clients CRM data for targeting and retargeting"
+    },
+    "RTG": {
+      "fullName": "Retargeting",
+      "description": "Pixels are placed inside of a GTM made in a given platform to retarget users who clicks ads"
+    }
+  },
+  "kpiDefinitions": {
+    "CPM": "Cost Per Mille (1000 impressions)",
+    "CPC": "Cost Per Click", 
+    "CPLC": "Cost Per Link Click",
+    "CPV": "Cost Per View",
+    "CPPE": "Cost Per Post Engagement",
+    "CPL": "Cost Per Lead",
+    "CPSU": "Cost Per Swipe Up",
+    "Conversions": "Conversion tracking events",
+    "Clicks": "Click-through events",
+    "Form Submissions": "Form completion events",
+    "Phone Calls": "Phone call conversion events"
+  },
+  "campaignMatchingPatterns": {
+    "displayNamePatterns": {
+      "addressableDisplay": ["Addressable Solutions - Addressable Display"],
+      "geofencing": ["Addressable Solutions - Geofencing with Foot Traffic"],
+      "targetedDisplay": ["Blended Tactics - Targeted Display"],
+      "metaLinkClick": ["Meta - FB - Link Click"],
+      "sem": ["SEM - SEM"]
+    },
+    "productPatterns": {
+      "Addressable Solutions": ["addressableDisplay", "geofencing", "addressableStv", "addressableVideo"],
+      "Blended Tactics": ["targetedDisplay", "socialDisplay", "targetedNative", "targetedVideo"],
+      "Meta": ["meta"],
+      "SEM": ["sem"]
+    },
+    "platformPatterns": {
+      "Simpli.fi": ["addressableDisplay", "geofencing"],
+      "Xandr": ["targetedDisplay", "socialDisplay", "targetedNative", "targetedVideo"],
+      "Meta": ["meta"],
+      "Google Ads": ["sem", "spark"]
+    }
+  }
+}
