@@ -1,0 +1,13 @@
+index.ts-821bf085.js:1 [Long Running Recorder] Content script initialised
+index.ts-821bf085.js:3 [Long Running Recorder] Recorder disabled
+campaign-analyzer.vercel.app/:1 Unchecked runtime.lastError: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+page-c0885779a7418487.js:1 Could not detect table type for report-sem-top-10-keywords-conversions-.csv
+eL @ page-c0885779a7418487.js:1
+page-c0885779a7418487.js:1 Could not detect table type for report-sem-top-10-keywords-clicks-.csv
+eL @ page-c0885779a7418487.js:1
+page-c0885779a7418487.js:1 Could not detect table type for report-sem-top-10-keywords-impressions-.csv
+eL @ page-c0885779a7418487.js:1
+page-c0885779a7418487.js:1 Analysis error: SyntaxError: Bad control character in string literal in JSON at position 200 (line 2 column 199)
+    at JSON.parse (<anonymous>)
+    at eO (page-c0885779a7418487.js:1:40511)
+eO @ page-c0885779a7418487.js:1

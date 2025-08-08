@@ -857,7 +857,7 @@ Format your response as JSON with this structure:
         body: JSON.stringify({ 
           prompt,
           temperature: aiModifiers.temperature,
-          maxTokens: 8192
+          maxTokens: 12000  // Increased to prevent truncation
         }),
       });
 
@@ -875,6 +875,12 @@ Format your response as JSON with this structure:
         .replace(/```\n?/g, "")
         .trim();
       
+      // Function to sanitize JSON string by removing/escaping problematic characters
+      const sanitizeJsonString = (str: string): string => {
+        // Remove problematic control characters but keep allowed ones
+        return str.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '');
+      };
+      
       let result;
       try {
         result = JSON.parse(responseText);
@@ -882,14 +888,26 @@ Format your response as JSON with this structure:
         console.error('JSON Parse Error:', parseError);
         console.error('Raw response text (first 500 chars):', responseText.substring(0, 500));
         
-        // Try to extract JSON from the response if it's embedded
+        // Try to extract and clean JSON from the response
         const jsonMatch = responseText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           try {
-            result = JSON.parse(jsonMatch[0]);
+            // Try sanitizing the JSON
+            const sanitizedJson = sanitizeJsonString(jsonMatch[0]);
+            console.log('Attempting to parse sanitized JSON...');
+            result = JSON.parse(sanitizedJson);
           } catch (secondParseError) {
             console.error('Second parse attempt failed:', secondParseError);
-            throw new Error(`Unable to parse AI response as JSON. First 200 chars: ${responseText.substring(0, 200)}...`);
+            console.error('Sanitized JSON (first 300 chars):', jsonMatch[0].substring(0, 300));
+            
+            // Final fallback: create a basic error response
+            result = {
+              executiveSummary: "Analysis generation failed due to formatting issues. Please try again.",
+              performanceAnalysis: "Unable to parse AI response. Please check your data format and try again.",
+              trendAnalysis: "Response parsing error occurred.",
+              recommendations: "Please retry the analysis with the same or different parameters.",
+              visualizations: []
+            };
           }
         } else {
           throw new Error(`Unable to find JSON in AI response. Response: ${responseText.substring(0, 200)}...`);

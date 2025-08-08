@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { prompt, temperature = 0.7, maxTokens = 8192 } = body;
+    const { prompt, temperature = 0.7, maxTokens = 12000 } = body;
 
     // Try both environment variable names
     const ANTHROPIC_API_KEY = process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
