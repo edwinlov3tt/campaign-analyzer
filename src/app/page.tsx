@@ -857,7 +857,7 @@ Format your response as JSON with this structure:
         body: JSON.stringify({ 
           prompt,
           temperature: aiModifiers.temperature,
-          maxTokens: 12000  // Increased to prevent truncation
+          maxTokens: 8192  // Max allowed for claude-3-5-sonnet
         }),
       });
 
